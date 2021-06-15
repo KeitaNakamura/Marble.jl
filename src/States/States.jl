@@ -21,7 +21,6 @@ export
     generate_pointstates,
 # GridState
     GridState,
-    GridStateThreads,
     gridstate,
     nonzeros, # from SparseArrays
     nnz,      # from SparseArrays

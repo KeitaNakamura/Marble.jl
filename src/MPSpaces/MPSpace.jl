@@ -9,10 +9,6 @@ struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: Sha
     bounddofs::Vector{Int}
     nearsurface::BitVector
     Nᵢ::PointState{VT}
-    # for threads
-    ptindices_threads::Vector{Vector{Int}}
-    dofmap_threads::Vector{DofMap{dim}}
-    dofindices_threads::Vector{PointToDofIndices}
 end
 
 function chunk_ranges(total::Int, nchunks::Int)
@@ -34,12 +30,7 @@ function MPSpace(::Type{T}, F::ShapeFunction{dim}, grid::AbstractGrid{dim}, npoi
     nearsurface = falses(npoints)
     Nᵢ = pointstate([construct(T, F) for _ in 1:npoints])
 
-    ptindices_threads = collect.(chunk_ranges(npoints, Threads.nthreads()))
-    dofmap_threads = [DofMap(size(grid)) for i in 1:Threads.nthreads()]
-    dofindices_threads = [construct_dofindices(length(ptindices_threads[i])) for i in 1:Threads.nthreads()]
-
-    MPSpace(F, grid, dofmap, dofindices, gridindices, activeindices, freedofs, bounddofs, nearsurface, Nᵢ,
-            ptindices_threads, dofmap_threads, dofindices_threads)
+    MPSpace(F, grid, dofmap, dofindices, gridindices, activeindices, freedofs, bounddofs, nearsurface, Nᵢ)
 end
 
 MPSpace(F::ShapeFunction, grid::AbstractGrid, npoints::Int) = MPSpace(Float64, F, grid, npoints)
@@ -47,16 +38,20 @@ MPSpace(F::ShapeFunction, grid::AbstractGrid, npoints::Int) = MPSpace(Float64, F
 value_gradient_type(::Type{T}, ::Val{dim}) where {T <: Real, dim} = ScalVec{dim, T}
 value_gradient_type(::Type{Vec{dim, T}}, ::Val{dim}) where {T, dim} = VecTensor{dim, T, dim^2}
 
-function reinit_threads!(dofmap, dofindices, gridindices, nearsurface, coords, grid, exclude, point_radius)
-    @assert length(coords) == length(dofindices)
+function _reinit!(space, coordinates, exclude, point_radius)
+    dofmap = space.dofmap
+    dofindices = space.dofindices
+    gridindices = space.gridindices
+    grid = space.grid
+
+    @assert length(coordinates) == length(dofindices)
 
     # Reinitialize dofmap
-
     ## reset
     dofmap .= false
 
     ## activate grid indices and store them.
-    for x in coords
+    for x in coordinates
         inds = neighboring_nodes(grid, x, point_radius)
         @inbounds dofmap[inds] .= true
     end
@@ -71,7 +66,7 @@ function reinit_threads!(dofmap, dofindices, gridindices, nearsurface, coords, g
             end
         end
         # surrounding nodes are activated
-        for x in coords
+        for x in coordinates
             inds = neighboring_nodes(grid, x, 1)
             @inbounds dofmap[inds] .= true
         end
@@ -81,43 +76,19 @@ function reinit_threads!(dofmap, dofindices, gridindices, nearsurface, coords, g
     count!(dofmap)
 
     # Reinitialize shape values and dof indices by updated DofMap
-    @inbounds for i in 1:length(coords)
-        allinds = neighboring_nodes(grid, coords[i], point_radius)
+    @inbounds for i in 1:length(coordinates)
+        allinds = neighboring_nodes(grid, coordinates[i], point_radius)
         DofHelpers.map!(dofmap, dofindices[i], allinds)
         allactive = DofHelpers.filter!(dofmap, gridindices[i], allinds)
-        nearsurface[i] = !allactive
+        space.nearsurface[i] = !allactive
     end
 end
 
 function reinit!(space::MPSpace{dim}, coordinates; exclude = nothing) where {dim}
     point_radius = ShapeFunctions.support_length(space.F)
+    _reinit!(space, coordinates, exclude, point_radius)
 
     @assert length(space.gridindices) == length(coordinates)
-
-    if length(coordinates) != npoints(space)
-        copy!.(space.ptindices_threads,
-               chunk_ranges(length(coordinates), Threads.nthreads()))
-    end
-    Threads.@threads for _ in 1:Threads.nthreads()
-        id = Threads.threadid()
-        ptindices = space.ptindices_threads[id]
-        reinit_threads!(space.dofmap_threads[id],
-                        resize!(space.dofindices_threads[id], length(ptindices)),
-                        view(space.gridindices, ptindices),
-                        view(space.nearsurface, ptindices),
-                        view(coordinates, ptindices),
-                        space.grid,
-                        exclude,
-                        point_radius)
-    end
-
-    # update global dofmap and dofindices
-    space.dofmap .= false
-    broadcast!(|, space.dofmap, space.dofmap_threads...)
-    count!(space.dofmap)
-    @inbounds for p in 1:length(coordinates)
-        DofHelpers.map!(space.dofmap, space.dofindices[p], space.gridindices[p])
-    end
 
     ## active grid indices
     DofHelpers.filter!(space.dofmap, space.activeindices, CartesianIndices(space.dofmap))
@@ -149,12 +120,9 @@ function reinit!(space::MPSpace{dim}, coordinates; exclude = nothing) where {dim
         end
     end
 
-    Threads.@threads for i in 1:Threads.nthreads()
-        rng = space.ptindices_threads[Threads.threadid()]
-        @inbounds for p in rng
-            inds = gridindices(space, p)
-            reinit!(space.Nᵢ[p], space.grid, inds, coordinates[p])
-        end
+    Threads.@threads for p in eachindex(coordinates)
+        inds = gridindices(space, p)
+        reinit!(space.Nᵢ[p], space.grid, inds, coordinates[p])
     end
 
     space
@@ -191,9 +159,7 @@ npoints(space::MPSpace) = length(space.dofindices)
 gridsize(space::MPSpace) = size(space.grid)
 
 function gridstate(space::MPSpace, T)
-    GridStateThreads(gridstate(T, space.dofmap, space.dofindices),
-                     space.ptindices_threads,
-                     [gridstate(T, dofmap, dofindices) for (dofmap, dofindices) in zip(space.dofmap_threads, space.dofindices_threads)])
+    gridstate(T, space.dofmap, space.dofindices)
 end
 
 function gridstate_matrix(space::MPSpace, T)

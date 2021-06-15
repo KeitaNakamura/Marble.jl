@@ -16,7 +16,7 @@ _collection(x::AbstractCollection{1}) = x
 # operations #
 ##############
 
-const UnionGridState = Union{GridState, GridStateThreads, GridStateOperation}
+const UnionGridState = Union{GridState, GridStateOperation}
 
 Base.zero(x::UnionGridState) = zero(eltype(nonzeros(x)))
 
@@ -94,7 +94,7 @@ end
 # set! #
 ########
 
-function set!(x::Union{GridState, GridStateThreads}, y::UnionGridState)
+function set!(x::GridState, y::UnionGridState)
     checkspace(x, y)
     resize!(x) # should not use zeros! for incremental calculation
     nzval_x = nonzeros(x)
@@ -106,20 +106,20 @@ function set!(x::Union{GridState, GridStateThreads}, y::UnionGridState)
     x
 end
 
-function set!(x::Union{GridState, GridStateThreads}, y)
+function set!(x::GridState, y)
     resize!(x) # should not use zeros! for incremental calculation
     nonzeros(x) .= Ref(y)
     x
 end
 
-function set!(x::Union{GridState, GridStateThreads}, y::UnionGridState, dofs::Vector{Int})
+function set!(x::GridState, y::UnionGridState, dofs::Vector{Int})
     checkspace(x, y)
     resize!(x) # should not use zeros! for incremental calculation
     view(nonzeros(x), dofs) ← view(nonzeros(y), dofs)
     x
 end
 
-function set!(x::Union{GridState, GridStateThreads}, y, dofs::Vector{Int})
+function set!(x::GridState, y, dofs::Vector{Int})
     resize!(x) # should not use zeros! for incremental calculation
     fill!(view(nonzeros(x), dofs), y)
     x
