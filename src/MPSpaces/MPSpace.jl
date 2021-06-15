@@ -4,6 +4,7 @@ struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: Sha
     dofmap::DofMap{dim}
     dofindices::PointToDofIndices
     gridindices::PointToGridIndices{dim}
+    pointsincell::Array{Vector{Int}, dim}
     activeindices::Vector{CartesianIndex{dim}}
     freedofs::Vector{Int} # flat dofs
     bounddofs::Vector{Int}
@@ -23,6 +24,7 @@ function MPSpace(::Type{T}, F::ShapeFunction{dim}, grid::AbstractGrid{dim}, npoi
 
     dofindices = construct_dofindices(npoints)
     gridindices = [CartesianIndex{dim}[] for _ in 1:npoints]
+    pointsincell = [Int[] for i in CartesianIndices(size(grid) .- 1)]
 
     activeindices = CartesianIndex{dim}[]
     freedofs = Int[]
@@ -30,7 +32,7 @@ function MPSpace(::Type{T}, F::ShapeFunction{dim}, grid::AbstractGrid{dim}, npoi
     nearsurface = falses(npoints)
     Nᵢ = pointstate([construct(T, F) for _ in 1:npoints])
 
-    MPSpace(F, grid, dofmap, dofindices, gridindices, activeindices, freedofs, bounddofs, nearsurface, Nᵢ)
+    MPSpace(F, grid, dofmap, dofindices, gridindices, pointsincell, activeindices, freedofs, bounddofs, nearsurface, Nᵢ)
 end
 
 MPSpace(F::ShapeFunction, grid::AbstractGrid, npoints::Int) = MPSpace(Float64, F, grid, npoints)
@@ -76,11 +78,13 @@ function _reinit!(space, coordinates, exclude, point_radius)
     count!(dofmap)
 
     # Reinitialize shape values and dof indices by updated DofMap
+    empty!.(space.pointsincell)
     @inbounds for i in 1:length(coordinates)
         allinds = neighboring_nodes(grid, coordinates[i], point_radius)
         DofHelpers.map!(dofmap, dofindices[i], allinds)
         allactive = DofHelpers.filter!(dofmap, gridindices[i], allinds)
         space.nearsurface[i] = !allactive
+        push!(space.pointsincell[whichcell(grid, coordinates[i])], i)
     end
 end
 
