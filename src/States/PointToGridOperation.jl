@@ -40,12 +40,11 @@ for op in (:*, :/)
     end
 end
 
-function add!(S::GridState, ∑ₚN::PointToGridOperation, pointinds = eachindex(dofindices(S)))
+function add!(S::GridState, ∑ₚN::PointToGridOperation, pointinds)
     nzval = nonzeros(S)
     dofinds = dofindices(S)
-    @assert length(dofinds) == length(pointinds)
-    @inbounds for (i, p) in enumerate(pointinds)
-        v = view(nzval, dofinds[i])
+    @inbounds for p in pointinds
+        v = view(nzval, dofinds[p])
         u = ∑ₚN[p]
         @assert length(v) == length(u)
         @simd for j in 1:length(v)
@@ -55,16 +54,12 @@ function add!(S::GridState, ∑ₚN::PointToGridOperation, pointinds = eachindex
     S
 end
 
-function add!(S::GridState, ∑ₚN::PointToGridOperation, activepoints::BitVector)
-    nzval = nonzeros(S)
-    dofinds = dofindices(S)
-    @inbounds for p in eachindex(dofinds, activepoints)
-        if activepoints[p]
-            v = view(nzval, dofinds[p])
-            u = ∑ₚN[p]
-            @assert length(v) == length(u)
-            @simd for i in 1:length(v)
-                @inbounds v[i] += u[i]
+function add!(S::GridState, ∑ₚN::PointToGridOperation)
+    for color in S.colors
+        Threads.@threads for i in eachindex(color)
+            block = color[i]
+            for cell in block
+                add!(S, ∑ₚN, S.pointsincell[cell])
             end
         end
     end
@@ -80,8 +75,9 @@ function set!(S::GridState, list::List{PointToGridOperation})
 end
 function set!(S::GridState, list::List{PointToGridOperation}, activepoints::BitVector)
     zeros!(S)
+    pointinds = findall(activepoints)
     for item in list
-        add!(S, item, activepoints)
+        add!(S, item, pointinds)
     end
     S
 end

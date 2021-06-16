@@ -1,15 +1,16 @@
-struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: ShapeValue{dim}}
+struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: ShapeValue{dim}, C}
     F::FT
     grid::GT
     dofmap::DofMap{dim}
     dofindices::PointToDofIndices
     gridindices::PointToGridIndices{dim}
-    pointsincell::Array{Vector{Int}, dim}
     activeindices::Vector{CartesianIndex{dim}}
     freedofs::Vector{Int} # flat dofs
     bounddofs::Vector{Int}
     nearsurface::BitVector
     Nᵢ::PointState{VT}
+    pointsincell::Array{Vector{Int}, dim}
+    colors::Vector{C}
 end
 
 function chunk_ranges(total::Int, nchunks::Int)
@@ -24,7 +25,6 @@ function MPSpace(::Type{T}, F::ShapeFunction{dim}, grid::AbstractGrid{dim}, npoi
 
     dofindices = construct_dofindices(npoints)
     gridindices = [CartesianIndex{dim}[] for _ in 1:npoints]
-    pointsincell = [Int[] for i in CartesianIndices(size(grid) .- 1)]
 
     activeindices = CartesianIndex{dim}[]
     freedofs = Int[]
@@ -32,7 +32,10 @@ function MPSpace(::Type{T}, F::ShapeFunction{dim}, grid::AbstractGrid{dim}, npoi
     nearsurface = falses(npoints)
     Nᵢ = pointstate([construct(T, F) for _ in 1:npoints])
 
-    MPSpace(F, grid, dofmap, dofindices, gridindices, pointsincell, activeindices, freedofs, bounddofs, nearsurface, Nᵢ)
+    pointsincell = [Int[] for i in CartesianIndices(size(grid) .- 1)]
+    colors = coloringcells(grid, 6)
+
+    MPSpace(F, grid, dofmap, dofindices, gridindices, activeindices, freedofs, bounddofs, nearsurface, Nᵢ, pointsincell, colors)
 end
 
 MPSpace(F::ShapeFunction, grid::AbstractGrid, npoints::Int) = MPSpace(Float64, F, grid, npoints)
@@ -163,7 +166,7 @@ npoints(space::MPSpace) = length(space.dofindices)
 gridsize(space::MPSpace) = size(space.grid)
 
 function gridstate(space::MPSpace, T)
-    gridstate(T, space.dofmap, space.dofindices)
+    gridstate(T, space.dofmap, space.dofindices, space.pointsincell, space.colors)
 end
 
 function gridstate_matrix(space::MPSpace, T)
@@ -179,7 +182,7 @@ function construct(name::Symbol, space::MPSpace)
     name == :shape_vector_value && return lazy(vec, space.Nᵢ)
     if name == :bound_normal_vector
         A = BoundNormalArray(Float64, gridsize(space)...)
-        return GridState(SparseArray(view(A, space.activeindices), space.dofmap), space.dofindices)
+        return GridState(SparseArray(view(A, space.activeindices), space.dofmap), space.dofindices, space.pointsincell, space.colors)
     end
     if name == :grid_coordinates
         return GridStateCollection(view(space.grid, space.activeindices), space.dofindices)

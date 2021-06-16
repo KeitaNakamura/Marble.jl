@@ -1,10 +1,12 @@
-struct GridState{dim, T, V} <: AbstractArray{T, dim}
+struct GridState{dim, T, V, C} <: AbstractArray{T, dim}
     sp::SparseArray{T, dim, V}
     dofindices::PointToDofIndices
+    pointsincell::Array{Vector{Int}, dim}
+    colors::Vector{C}
 end
 
-function gridstate(::Type{T}, dofmap::DofMap, dofindices::PointToDofIndices) where {T}
-    GridState(SparseArray{T}(dofmap), dofindices)
+function gridstate(::Type{T}, dofmap::DofMap, dofindices::PointToDofIndices, pointsincell, colors) where {T}
+    GridState(SparseArray{T}(dofmap), dofindices, pointsincell, colors)
 end
 
 Base.size(A::GridState) = size(A.sp)
