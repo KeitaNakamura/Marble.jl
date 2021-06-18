@@ -21,7 +21,8 @@ export
     whichcell,
 # coloring
     ColoredBlocks,
-    coloringcells
+    coloringcells,
+    blocksize
 
 include("AbstractGrid.jl")
 include("Grid.jl")

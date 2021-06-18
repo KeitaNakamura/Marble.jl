@@ -43,15 +43,17 @@ struct ColoredBlocks{dim} <: AbstractVector{DashedCartesianIndices{dim}}
     len::Int
 end
 
-Base.size(x::ColoredBlocks) = size(x.colors)
-@inline function Base.getindex(x::ColoredBlocks, i::Int)
-    @boundscheck checkbounds(x, i)
-    @inbounds x.colors[i]
-end
-
 function ColoredBlocks(dims::NTuple{dim, Int}, len::Int) where {dim}
     f(I...) = DashedCartesianIndices(DashedUnitRange.(UnitRange.(I, dims), len, len))
     iter = Iterators.ProductIterator(ntuple(d -> (1, len+1), Val(dim)))
     colors = vec([f(I...) for I in iter])
     ColoredBlocks(colors, len)
 end
+
+Base.size(x::ColoredBlocks) = size(x.colors)
+@inline function Base.getindex(x::ColoredBlocks, i::Int)
+    @boundscheck checkbounds(x, i)
+    @inbounds x.colors[i]
+end
+
+blocksize(x::ColoredBlocks{dim}) where {dim} = ntuple(d -> x.len, Val(dim))
