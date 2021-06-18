@@ -2,7 +2,6 @@ module Grids
 
 using Reexport
 using Coordinates
-using Poingr.Arrays: DashedUnitRange
 @reexport using Poingr.TensorValues
 
 using Base: @_inline_meta, @_propagate_inbounds_meta
@@ -21,6 +20,7 @@ export
     neighboring_cells,
     whichcell,
 # coloring
+    ColoredBlocks,
     coloringcells
 
 include("AbstractGrid.jl")

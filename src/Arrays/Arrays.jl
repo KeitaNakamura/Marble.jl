@@ -32,6 +32,5 @@ include("ScalarMatrix.jl")
 include("SparseMatrixCOO.jl")
 include("SparseArray.jl")
 include("List.jl")
-include("DashedUnitRange.jl")
 
 end

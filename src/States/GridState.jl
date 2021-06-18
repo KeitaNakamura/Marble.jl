@@ -1,8 +1,8 @@
-struct GridState{dim, T, V, C} <: AbstractArray{T, dim}
+struct GridState{dim, T, V} <: AbstractArray{T, dim}
     sp::SparseArray{T, dim, V}
     dofindices::PointToDofIndices
     pointsincell::Array{Vector{Int}, dim}
-    colors::Vector{C}
+    colors::ColoredBlocks{dim}
 end
 
 function gridstate(::Type{T}, dofmap::DofMap, dofindices::PointToDofIndices, pointsincell, colors) where {T}

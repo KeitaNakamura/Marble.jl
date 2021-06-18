@@ -1,4 +1,4 @@
-struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: ShapeValue{dim}, C}
+struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: ShapeValue{dim}}
     F::FT
     grid::GT
     dofmap::DofMap{dim}
@@ -10,7 +10,7 @@ struct MPSpace{dim, FT <: ShapeFunction{dim}, GT <: AbstractGrid{dim}, VT <: Sha
     nearsurface::BitVector
     Nᵢ::PointState{VT}
     pointsincell::Array{Vector{Int}, dim}
-    colors::Vector{C}
+    colors::ColoredBlocks{dim}
 end
 
 function chunk_ranges(total::Int, nchunks::Int)
