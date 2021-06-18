@@ -166,7 +166,7 @@ npoints(space::MPSpace) = length(space.dofindices)
 gridsize(space::MPSpace) = size(space.grid)
 
 function gridstate(space::MPSpace, T)
-    gridstate(T, space.dofmap, space.dofindices, space.pointsincell, space.colors)
+    gridstate(T, space.dofmap, space.dofindices, space.gridindices, space.pointsincell, space.colors)
 end
 
 function gridstate_matrix(space::MPSpace, T)
@@ -182,7 +182,7 @@ function construct(name::Symbol, space::MPSpace)
     name == :shape_vector_value && return lazy(vec, space.Nᵢ)
     if name == :bound_normal_vector
         A = BoundNormalArray(Float64, gridsize(space)...)
-        return GridState(SparseArray(view(A, space.activeindices), space.dofmap), space.dofindices, space.pointsincell, space.colors)
+        return GridState(SparseArray(view(A, space.activeindices), space.dofmap), space.dofindices, space.gridindices, space.pointsincell, space.colors)
     end
     if name == :grid_coordinates
         return GridStateCollection(view(space.grid, space.activeindices), space.dofindices)
