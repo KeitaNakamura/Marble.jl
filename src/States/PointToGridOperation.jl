@@ -40,6 +40,18 @@ for op in (:*, :/)
     end
 end
 
+function add_in_block!(dest, ∑ₚN::PointToGridOperation, gridinds, pointinds)
+    @inbounds for p in pointinds
+        inds = gridinds[p]
+        u = ∑ₚN[p]
+        @assert length(inds) == length(u)
+        @simd for i in eachindex(inds)
+            dest[inds[i]] += u[i]
+        end
+    end
+    dest
+end
+
 function add!(S::GridState, ∑ₚN::PointToGridOperation, pointinds)
     nzval = nonzeros(S)
     dofinds = dofindices(S)
@@ -54,13 +66,22 @@ function add!(S::GridState, ∑ₚN::PointToGridOperation, pointinds)
     S
 end
 
-function add!(S::GridState, ∑ₚN::PointToGridOperation)
-    for color in S.colors
+fillzero!(A) = fill!(A, zero(eltype(A)))
+function add!(S::GridState{dim, T}, ∑ₚN::PointToGridOperation) where {dim, T}
+    scale = 2
+    colors = S.colors
+    temps = [Array{T}(undef, blocksize(colors).+2*scale) for i in 1:Threads.nthreads()] # TODO: modify for high order interpolation
+    for color in colors
         Threads.@threads for i in eachindex(color)
             block = color[i]
+            o = oneunit(CartesianIndex{dim})
+            start = first(block)
+            cartesian = start-scale*o:start+(colors.len+scale-1)*o
+            A = OffsetArray(fillzero!(temps[Threads.threadid()]), cartesian)
             for cell in block
-                add!(S, ∑ₚN, S.pointsincell[cell])
+                add_in_block!(A, ∑ₚN, S.gridindices, S.pointsincell[cell])
             end
+            unsafe_add!(S, A)
         end
     end
     S

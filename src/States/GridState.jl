@@ -30,6 +30,19 @@ end
     A
 end
 
+function unsafe_add!(dest::GridState, src::AbstractArray)
+    nzval = nonzeros(dest)
+    nzinds = nzindices(dest)
+    for i in CartesianIndices(src)
+        if checkbounds(Bool, dest, i)
+            I = nzinds[i]
+            if I !== nothing
+                @inbounds nzval[I] += src[i]
+            end
+        end
+    end
+end
+
 zeros!(v::AbstractVector{T}, n) where {T} = (resize!(v, n); fill!(v, zero(T)); v)
 zeros!(v) = (fill!(v, zero(eltype(v))); v)
 zeros!(A::GridState) = (zeros!(nonzeros(A), nnz(A)); A)

@@ -8,6 +8,7 @@ using Base: @_propagate_inbounds_meta
 using Base.Cartesian: @nall
 using Base.Broadcast: broadcasted
 using SparseArrays
+using OffsetArrays
 
 import SparseArrays: nonzeros, nnz, sparse!, sparse
 import Poingr.Arrays: nzindices
