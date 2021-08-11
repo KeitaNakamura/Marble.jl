@@ -5,6 +5,13 @@
         T($(exps...))
     end
 end
+@generated function initval(::Type{T}) where {T <: NamedTuple}
+    exps = [:(zero($t)) for t in fieldtypes(T)]
+    quote
+        @_inline_meta
+        T(($(exps...),))
+    end
+end
 initval(x) = initval(typeof(x))
 
 reinit!(x::AbstractArray) = (broadcast!(initval, x, x); x)

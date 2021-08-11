@@ -5,9 +5,9 @@ using Base.Cartesian: @ntuple, @nall
 
 using Reexport
 @reexport using Tensorial
+@reexport using WriteVTK
 using StaticArrays, StructArrays
 using Coordinates
-using WriteVTK
 
 const BLOCK_UNIT = unsigned(3) # 2^3
 

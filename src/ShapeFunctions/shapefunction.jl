@@ -46,21 +46,21 @@ abstract type ShapeValues{dim, T} <: AbstractVector{T} end
 Base.size(x::ShapeValues) = size(x.N)
 
 """
-    ShapeValues(::ShapeFunction)
-    ShapeValues(::Type{T}, ::ShapeFunction)
+    Poingr.ShapeValues(::ShapeFunction)
+    Poingr.ShapeValues(::Type{T}, ::ShapeFunction)
 
 Construct object storing value of `ShapeFunction`.
 
 # Examples
 ```jldoctest
-julia> N = construct(QuadraticBSpline{2}());
+julia> sv = Poingr.ShapeValues(QuadraticBSpline{2}());
 
-julia> reinit!(N, Grid(0:3, 0:3), Vec(1, 1));
+julia> reinit!(sv, Grid(0:3, 0:3), Vec(1, 1));
 
-julia> sum(N)
+julia> sum(sv.N)
 1.0
 
-julia> sum(∇, N)
+julia> sum(sv.∇N)
 2-element Vec{2, Float64}:
  5.551115123125783e-17
  5.551115123125783e-17
@@ -76,16 +76,16 @@ Reinitialize value of shape function at `x` with each `grid` node.
 
 # Examples
 ```jldoctest
-julia> N = construct(QuadraticBSpline{2}());
+julia> sv = Poingr.ShapeValues(QuadraticBSpline{2}());
 
-julia> reinit!(N, Grid(0:3, 0:3), Vec(1, 1));
+julia> reinit!(sv, Grid(0:3, 0:3), Vec(1, 1));
 
-julia> sum(N)
+julia> sum(sv.N)
 1.0
 
-julia> reinit!(N, Grid(0:3, 0:3), CartesianIndices((1:2, 1:2)), Vec(1, 1));
+julia> reinit!(sv, Grid(0:3, 0:3), Vec(1, 1), CartesianIndices((1:2, 1:2)));
 
-julia> sum(N)
+julia> sum(sv.N)
 0.765625
 ```
 """

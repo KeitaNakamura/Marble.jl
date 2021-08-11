@@ -7,14 +7,14 @@ Construct `Grid` by `axes`.
 # Examples
 ```jldoctest
 julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
-4×4 Grid{2, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Nothing}:
+4×4 Grid{2, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Poingr.MaskedArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}}:
  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]
  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]
  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]
  [3.0, 1.0]  [3.0, 2.0]  [3.0, 3.0]  [3.0, 4.0]
 ```
 """
-struct Grid{dim, T, Axes, Node, State <: Union{AbstractArray{Node, dim}, Node}} <: AbstractArray{Vec{dim, T}, dim}
+struct Grid{dim, T, Axes, Node, State <: MaskedArray{Node, dim}} <: AbstractArray{Vec{dim, T}, dim}
     coordinates::Coordinate{dim, NTuple{dim, T}, Axes}
     state::State
 end
@@ -40,7 +40,7 @@ function Grid{dim}(::Type{Node}, axis::AbstractVector) where {dim, Node}
     state = MaskedArray(StructVector{Node}(undef, 0), Mask(size(coordinates)))
     Grid(coordinates, state)
 end
-Grid{dim}(axis::AbstractVector) where {dim} = Grid{dim}(Coordinate{dim}(axis), nothing)
+Grid{dim}(axis::AbstractVector) where {dim} = Grid{dim}(Nothing, axis)
 
 @inline function Base.getindex(grid::Grid{dim}, i::Vararg{Int, dim}) where {dim}
     @boundscheck checkbounds(grid, i...)
@@ -67,7 +67,7 @@ function _neighboring_nodes(ξ::Real, h::Real, len::Int)
 end
 
 """
-    neighboring_nodes(grid, x::Vec, h::Real)
+    Poingr.neighboring_nodes(grid, x::Vec, h::Real)
 
 Return `CartesianIndices` storing neighboring node indices around `x`.
 `h` is a range for searching and its unit is `gridsteps` `dx`.
@@ -76,7 +76,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0)
-6-element Grid{1, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Nothing}:
+6-element Grid{1, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Poingr.MaskedArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}}:
  [0.0]
  [1.0]
  [2.0]
@@ -84,12 +84,12 @@ julia> grid = Grid(0.0:1.0:5.0)
  [4.0]
  [5.0]
 
-julia> neighboring_nodes(grid, Vec(1.5), 1)
+julia> Poingr.neighboring_nodes(grid, Vec(1.5), 1)
 2-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(2,)
  CartesianIndex(3,)
 
-julia> neighboring_nodes(grid, Vec(1.5), 2)
+julia> Poingr.neighboring_nodes(grid, Vec(1.5), 2)
 4-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(1,)
  CartesianIndex(2,)
@@ -110,8 +110,8 @@ julia> neighboring_nodes(grid, Vec(1.5), 2)
 end
 
 """
-    neighboring_cells(grid, x::Vec, h::Int)
-    neighboring_cells(grid, cellindex::CartesianIndex, h::Int)
+    Poingr.neighboring_cells(grid, x::Vec, h::Int)
+    Poingr.neighboring_cells(grid, cellindex::CartesianIndex, h::Int)
 
 Return `CartesianIndices` storing neighboring cell indices around `x`.
 `h` is number of outer cells around cell where `x` locates.
@@ -120,7 +120,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{2, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Nothing}:
+6×6 Grid{2, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Poingr.MaskedArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -130,13 +130,13 @@ julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
 
 julia> x = Vec(1.5, 1.5);
 
-julia> neighboring_cells(grid, x, 1)
+julia> Poingr.neighboring_cells(grid, x, 1)
 3×3 CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}:
  CartesianIndex(1, 1)  CartesianIndex(1, 2)  CartesianIndex(1, 3)
  CartesianIndex(2, 1)  CartesianIndex(2, 2)  CartesianIndex(2, 3)
  CartesianIndex(3, 1)  CartesianIndex(3, 2)  CartesianIndex(3, 3)
 
-julia> neighboring_cells(grid, whichcell(grid, x), 1) == ans
+julia> Poingr.neighboring_cells(grid, Poingr.whichcell(grid, x), 1) == ans
 true
 ```
 """
@@ -159,14 +159,14 @@ end
 end
 
 """
-    whichcell(grid, x::Vec)
+    Poingr.whichcell(grid, x::Vec)
 
 Return cell index where `x` locates.
 
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{2, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Nothing}:
+6×6 Grid{2, Float64, Tuple{StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}}, Nothing, Poingr.MaskedArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -174,7 +174,7 @@ julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
  [4.0, 0.0]  [4.0, 1.0]  [4.0, 2.0]  [4.0, 3.0]  [4.0, 4.0]  [4.0, 5.0]
  [5.0, 0.0]  [5.0, 1.0]  [5.0, 2.0]  [5.0, 3.0]  [5.0, 4.0]  [5.0, 5.0]
 
-julia> whichcell(grid, Vec(1.5, 1.5))
+julia> Poingr.whichcell(grid, Vec(1.5, 1.5))
 CartesianIndex(2, 2)
 ```
 """

@@ -60,20 +60,20 @@ end
 end
 
 """
-    BSplinePosition(; nth::Int, dir::Int)
+    Poingr.BSplinePosition(; nth::Int, dir::Int)
 
 Position of node at `ξ = 0`.
 The node is located at `nth` away from bound with `dir` direction.
 
 # Examples
 ```jldoctest
-julia> BSplinePosition([1,2,3,4,5], 2)
+julia> Poingr.BSplinePosition([1,2,3,4,5], 2)
 BSplinePosition(nth = 1, dir = 1)
 
-julia> BSplinePosition([1,2,3,4,5], 4)
+julia> Poingr.BSplinePosition([1,2,3,4,5], 4)
 BSplinePosition(nth = 1, dir = -1)
 
-julia> pos = BSplinePosition([1,2,3,4,5], 1)
+julia> pos = Poingr.BSplinePosition([1,2,3,4,5], 1)
 BSplinePosition(nth = 0, dir = 0)
 
 julia> f = QuadraticBSpline{0}()
