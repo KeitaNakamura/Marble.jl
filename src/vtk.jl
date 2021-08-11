@@ -1,17 +1,5 @@
-module VTKOutputs
-
-using Reexport
-@reexport using WriteVTK
-using Poingr.TensorValues
-using Poingr.Collections
-using Poingr.Grids
-using Poingr.States
-
-export
-    vtk_points
-
 """
-    vtk_points(filename::AbstractString, points::PointState{<: Vec})
+    vtk_points(filename::AbstractString, points::AbstractVector{<: Vec})
 
 Create VTK file to visualize `points`.
 This should be used instead of calling `vtk_grid` in `WriteVTK` package.
@@ -30,7 +18,7 @@ julia> vtk_save(vtkfile)
  "vtkfile.vtu"
 ```
 """
-function vtk_points(vtk, x::Union{PointState{<: Vec}, AbstractVector{<: Vec}})
+function vtk_points(vtk, x::AbstractVector{<: Vec})
     coords = vtk_format(x)
     npts = length(x)
     cells = [MeshCell(VTKCellTypes.VTK_VERTEX, [i]) for i in 1:npts]
@@ -59,23 +47,20 @@ julia> vtk_save(vtkfile)
  "vtkfile.vtr"
 ```
 """
-function WriteVTK.vtk_grid(vtk::AbstractString, grid::AbstractGrid)
+function WriteVTK.vtk_grid(vtk::AbstractString, grid::Grid)
     vtk_grid(vtk, map(collect, gridaxes(grid))...)
 end
 
 """
-    vtk_point_data(vtk, data::AbstractVector{ <:Vec}, name)
+    vtk_point_data(vtk, data::AbstractVector{<: Vec}, name)
 
 Write the vector field data to the `vtk` file.
 """
-function WriteVTK.vtk_point_data(vtk::WriteVTK.DatasetFile, data::Union{PointState{<: Tensor}, AbstractVector{<: Tensor}}, name::AbstractString)
+function WriteVTK.vtk_point_data(vtk::WriteVTK.DatasetFile, data::AbstractVector{<: Tensor}, name::AbstractString)
     vtk_point_data(vtk, vtk_format(data), name)
 end
-function WriteVTK.vtk_point_data(vtk::WriteVTK.DatasetFile, data::AbstractCollection{2}, name::AbstractString)
-    vtk_point_data(vtk, collect(data), name)
-end
 
-function vtk_format(x::Union{PointState{Vec{dim, T}}, AbstractVector{Vec{dim, T}}}) where {dim, T}
+function vtk_format(x::AbstractVector{Vec{dim, T}}) where {dim, T}
     n = length(x)
     v = reinterpret(T, Array(x))
     out = zeros(T, (dim == 2 ? 3 : dim), n)
@@ -83,8 +68,6 @@ function vtk_format(x::Union{PointState{Vec{dim, T}}, AbstractVector{Vec{dim, T}
     out
 end
 
-function vtk_format(data::Union{PointState{<: SymmetricSecondOrderTensor{3}}, AbstractVector{<: SymmetricSecondOrderTensor{3}}})
+function vtk_format(data::AbstractVector{<: SymmetricSecondOrderTensor{3}})
     vtk_format([@inbounds Vec(x[1,1], x[2,2], x[3,3], x[1,2], x[2,3], x[1,3]) for x in data])
-end
-
 end

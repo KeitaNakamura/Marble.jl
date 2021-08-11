@@ -1,13 +1,15 @@
 """
-    BSpline{order}(dim)
-    BSpline{order}(; dim)
+    BSpline{order, dim}()
+    LinearBSpline{dim}()
+    QuadraticBSpline{dim}()
+    CubicBSpline{dim}()
 
 Create B-spline shape function.
 
 # Examples
 ```jldoctest
-julia> f = BSpline{1}(dim = 2)
-BSpline{1}(dim = 2)
+julia> f = LinearBSpline{2}()
+LinearBSpline{2}()
 
 julia> f(Vec(0.5, 0.5))
 0.25
@@ -22,9 +24,6 @@ end
 const LinearBSpline    = BSpline{1}
 const QuadraticBSpline = BSpline{2}
 const CubicBSpline     = BSpline{3}
-
-@pure BSpline{order}(dim::Int) where {order} = BSpline{order, dim}()
-@pure BSpline{order}(; dim::Int) where {order} = BSpline{order, dim}()
 
 support_length(::BSpline{1}) = 1.0
 support_length(::BSpline{2}) = 1.5
@@ -56,18 +55,9 @@ function value(::BSpline{4, 0}, ξ::Real)::typeof(ξ)
     ξ < 2.5 ? (5 - 2ξ)^4 / 384 : zero(ξ)
 end
 
-@generated function value(::BSpline{order, dim}, ξ::Vec{dim}) where {order, dim}
-    exps = [:(value(BSpline{order}(dim = 0), ξ[$i])) for i in 1:dim]
-    quote
-        @_inline_meta
-        @inbounds prod(tuple($(exps...)))
-    end
+@inline function value(::BSpline{order, dim}, ξ::Vec{dim}) where {order, dim}
+    prod(value.(BSpline{order, 0}(), ξ))
 end
-
-function Base.show(io::IO, x::BSpline{order, dim}) where {order, dim}
-    print(io, "BSpline{$order}(dim = $dim)")
-end
-
 
 """
     BSplinePosition(; nth::Int, dir::Int)
@@ -86,8 +76,8 @@ BSplinePosition(nth = 1, dir = -1)
 julia> pos = BSplinePosition([1,2,3,4,5], 1)
 BSplinePosition(nth = 0, dir = 0)
 
-julia> f = BSpline{2}(dim = 0)
-BSpline{2}(dim = 0)
+julia> f = QuadraticBSpline{0}()
+QuadraticBSpline{0}()
 
 julia> f(0.0, pos)
 1.0
@@ -162,10 +152,56 @@ function value(spline::BSpline{3, 0}, ξ::Real, pos::BSplinePosition)::typeof(ξ
     end
 end
 
-function value(::BSpline{order, dim}, ξ::Vec{dim}, pos::NTuple{dim, BSplinePosition}) where {order, dim}
-    prod(i -> value(BSpline{order}(dim = 0), @inbounds(ξ[i]), @inbounds(pos[i])), 1:dim)
+@inline function value(::BSpline{order, dim}, ξ::Vec{dim}, pos::NTuple{dim, BSplinePosition}) where {order, dim}
+    prod(value.(BSpline{order, 0}(), ξ, pos))
 end
 
 function Base.show(io::IO, pos::BSplinePosition)
     print(io, "BSplinePosition(nth = $(pos.nth), dir = $(pos.dir))")
+end
+
+
+struct BSplineValues{order, dim, T} <: ShapeValues{dim, T}
+    F::BSpline{order, dim}
+    N::Vector{T}
+    ∇N::Vector{Vec{dim, T}}
+end
+
+function ShapeValues(::Type{T}, F::BSpline{order, dim}) where {order, dim, T}
+    N = Vector{T}(undef, 0)
+    ∇N = Vector{Vec{dim, T}}(undef, 0)
+    BSplineValues(F, N, ∇N)
+end
+
+function reinit!(it::BSplineValues{<: Any, dim}, grid::Grid{dim}, x::Vec{dim}, indices::AbstractArray = CartesianIndices(grid)) where {dim}
+    @boundscheck checkbounds(grid, indices)
+    F = it.F
+    resize!(it.N, length(indices))
+    resize!(it.∇N, length(indices))
+    @inbounds for (j, I) in enumerate(view(CartesianIndices(grid), indices))
+        xᵢ = grid[I]
+        it.N[j], it.∇N[j] = _value_gradient(F, x, xᵢ, gridsteps(grid), BSplinePosition(grid, I))
+    end
+    it
+end
+
+function _value(F::ShapeFunction, x::Vec{dim}, xᵢ::Vec{dim}, h::NTuple{dim}, pos) where {dim}
+    ξ = (x - xᵢ) ./ h
+    value(F, ξ, pos)
+end
+
+function _value_gradient(F::ShapeFunction, x::Vec, xᵢ::Vec, h::Tuple, pos)
+    dv, v = gradient(x -> _value(F, x, xᵢ, h, pos), x, :all)
+    v, dv
+end
+
+
+struct BSplineValue{dim, T}
+    N::T
+    ∇N::Vec{dim, T}
+end
+
+@inline function Base.getindex(it::BSplineValues, i::Int)
+    @_propagate_inbounds_meta
+    BSplineValue(it.N[i], it.∇N[i])
 end

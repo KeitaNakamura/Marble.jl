@@ -1,12 +1,14 @@
-const ∇ₛ = symmetric ∘ ∇
+@generated function initval(::Type{T}) where {T}
+    exps = [:(zero($t)) for t in fieldtypes(T)]
+    quote
+        @_inline_meta
+        T($(exps...))
+    end
+end
+initval(x) = initval(typeof(x))
 
-Tensorial.:⋅(::typeof(∇), v::VecTensor) = tr(∇(v))
-Tensorial.:⋅(v::VecTensor, ::typeof(∇)) = tr(∇(v))
+reinit!(x::AbstractArray) = (broadcast!(initval, x, x); x)
 
-_otimes_(x::Real, v::Vec) = x * v
-_otimes_(v::Vec, x::Real) = v * x
-
-_otimes_(v1::Vec, v2::Vec) = v1 ⊗ v2
 
 function Tensor3D(x::SecondOrderTensor{2,T}) where {T}
     z = zero(T)
@@ -33,6 +35,3 @@ end
 function Tensor2D(x::SymmetricFourthOrderTensor{3,T}) where {T}
     @inbounds SymmetricFourthOrderTensor{2,T}((i,j,k,l) -> @inbounds(x[i,j,k,l]))
 end
-
-flatview(x::Vector{Float64}) = x
-flatview(x::Vector{Vec{dim, T}}) where {dim, T} = reinterpret(T, x)

@@ -1,8 +1,4 @@
-module Loggers
-
 import ProgressMeter
-
-export Logger, islogpoint, logindex, update!, isfinised
 
 """
     Logger(logpoints::AbstractVector; progress = false)
@@ -114,6 +110,4 @@ end
 
 function printprogress(logger::Logger, t::Real)
     ProgressMeter.update!(logger.pmeter, getprogress(logger, t))
-end
-
 end
