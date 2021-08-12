@@ -14,7 +14,9 @@ end
 end
 initval(x) = initval(typeof(x))
 
-reinit!(x::AbstractArray) = (broadcast!(initval, x, x); x)
+# TODO: find more clever way
+reinit!(x::StructArray) = (broadcast!(initval, x, x); x)
+reinit!(x::AbstractArray) = (broadcast!(zero, x, x); x)
 
 
 function Tensor3D(x::SecondOrderTensor{2,T}) where {T}

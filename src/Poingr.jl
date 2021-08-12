@@ -3,6 +3,8 @@ module Poingr
 using Base: @_inline_meta, @_propagate_inbounds_meta
 using Base.Cartesian: @ntuple, @nall
 
+using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, ArrayStyle, broadcasted, broadcastable, throwdm, preprocess
+
 using Reexport
 @reexport using Tensorial
 @reexport using WriteVTK

@@ -1,11 +1,9 @@
-using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, broadcasted, throwdm, preprocess
-
 # https://discourse.julialang.org/t/multithreaded-broadcast/26786/6
 struct ThreadedStyle <: BroadcastStyle end
 function dot_threads end
 Broadcast.broadcasted(f::typeof(dot_threads), x) = Broadcasted{ThreadedStyle}(identity, (x,))
-@inline function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ThreadedStyle})
-    axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
+
+@inline function _copyto!(dest::AbstractArray, bc::Broadcasted{ThreadedStyle})
     @assert bc.f === identity
     @assert bc.args isa Tuple{Any}
     bc′ = preprocess(dest, bc.args[1])
@@ -13,6 +11,34 @@ Broadcast.broadcasted(f::typeof(dot_threads), x) = Broadcasted{ThreadedStyle}(id
         @inbounds dest[I] = bc′[I]
     end
     dest
+end
+
+@inline function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ThreadedStyle})
+    axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
+    _copyto!(dest, bc)
+end
+
+@inline function _threads_copyto!(f, dest::MaskedArray, args...)
+    if identical_mask(dest, args...)
+        bc = broadcasted(f, args...)
+        _copyto!(dest, broadcasted(dot_threads, bc))
+    else
+        bc = broadcasted(f, args...)
+        bc′ = preprocess(dest, bc)
+        broadcast!(|, dest.mask, getmask.(args)...) # don't use bc′
+        reinit!(dest)
+        @inbounds Threads.@threads for i in eachindex(bc′)
+            if dest.mask[i]
+                dest[i] = bc′[i]
+            end
+        end
+    end
+end
+
+@inline function Base.copyto!(dest::MaskedArray, bc::Broadcasted{ThreadedStyle})
+    axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
+    bcf = Broadcast.flatten(bc.args[1])
+    _threads_copyto!(bcf.f, dest, bcf.args...)
 end
 
 macro dot_threads(ex)

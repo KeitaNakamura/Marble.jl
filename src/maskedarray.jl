@@ -21,11 +21,23 @@ function reinit!(mask::Mask)
     count
 end
 
+Base.copy(mask::Mask) = Mask(copy(mask.indices))
+
+Broadcast.BroadcastStyle(::Type{<: Mask}) = ArrayStyle{Mask}()
+Base.similar(bc::Broadcasted{ArrayStyle{Mask}}, ::Type{Bool}) = Mask(size(bc))
+
 
 struct MaskedArray{T, dim, V <: AbstractVector{T}} <: AbstractArray{T, dim}
     data::V
     mask::Mask{dim}
 end
+
+function MaskedArray{T}(u::UndefInitializer, dims::Tuple{Vararg{Int}}) where {T}
+    data = Vector{T}(u, prod(dims))
+    mask = Mask(dims)
+    MaskedArray(data, mask)
+end
+MaskedArray{T}(u::UndefInitializer, dims::Int...) where {T} = MaskedArray{T}(u, dims)
 
 Base.IndexStyle(::Type{<: MaskedArray}) = IndexLinear()
 Base.size(x::MaskedArray) = size(x.mask)
@@ -64,21 +76,50 @@ function reinit!(x::MaskedArray{T}) where {T}
     x
 end
 
+Base.unaliascopy(x::MaskedArray) = MaskedArray(Base.unaliascopy(x.data), Base.copy(x.mask))
 
-_extract_masks(masks::Tuple, x::Any) = masks
+
+Broadcast.BroadcastStyle(::Type{<: MaskedArray}) = ArrayStyle{MaskedArray}()
+
+__extract_masks(masks::Tuple, x::Any) = masks
+__extract_masks(masks::Tuple, x::AbstractArray) = (masks..., nothing)
+_extract_masks(masks::Tuple, x::AbstractArray) = __extract_masks(masks, broadcastable(x)) # handle Tensor
 _extract_masks(masks::Tuple, x::MaskedArray) = (masks..., x.mask)
-_extract_masks(masks::Tuple, x::Any, y...) = _extract_masks(masks, y...)
-_extract_masks(masks::Tuple, x::MaskedArray, y...) = _extract_masks((masks..., x.mask), y...)
-extract_masks(args...) = _extract_masks((), args...)
-allsame(args) = all(x -> x === args[1], args)
+_extract_masks(masks::Tuple, x::Any) = masks
+extract_masks(masks::Tuple, args::Tuple{}) = masks
+extract_masks(masks::Tuple, args::Tuple) = extract_masks(_extract_masks(masks, args[1]), Base.tail(args))
+identical_mask(args...) = (masks = extract_masks((), args); all(x -> x === masks[1], masks))
+
 getdata(x::MaskedArray) = x.data
 getdata(x::Any) = x
-Broadcast.BroadcastStyle(::Type{<: MaskedArray}) = Broadcast.ArrayStyle{MaskedArray}()
-function _copyto!(f, dest::MaskedArray, args...)
-    @assert allsame(extract_masks(dest, args...))
-    broadcast!(f, getdata(dest), map(getdata, args)...)
+
+getmask(x::MaskedArray) = x.mask
+getmask(x::AbstractArray) = ifelse(broadcastable(x) isa AbstractArray, true, false) # handle Tensor
+getmask(x::Any) = false
+
+function Base.similar(bc::Broadcasted{ArrayStyle{MaskedArray}}, ::Type{ElType}) where {ElType}
+    mask = broadcast(|, getmask.(bc.args)...)
+    reinit!(MaskedArray(Vector{ElType}(undef, length(bc)), mask))
 end
-function Base.copyto!(dest::MaskedArray, bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{MaskedArray}})
+
+Broadcast.broadcast_unalias(dest::MaskedArray, src::MaskedArray) = Base.unalias(dest, src)
+function _copyto!(f, dest::MaskedArray, args...)
+    if identical_mask(dest, args...)
+        broadcast!(f, getdata(dest), map(getdata, args)...)
+    else
+        bc = broadcasted(f, args...)
+        bc′ = preprocess(dest, bc)
+        broadcast!(|, dest.mask, getmask.(args)...) # don't use bc′
+        reinit!(dest)
+        @inbounds @simd for i in eachindex(bc′)
+            if dest.mask[i]
+                dest[i] = bc′[i]
+            end
+        end
+    end
+end
+function Base.copyto!(dest::MaskedArray, bc::Broadcasted{ArrayStyle{MaskedArray}})
+    axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
     bcf = Broadcast.flatten(bc)
     _copyto!(bcf.f, dest, bcf.args...)
     dest
