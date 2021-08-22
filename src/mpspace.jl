@@ -14,7 +14,7 @@ function MPSpace(grid::Grid{dim, T}, xₚ::AbstractVector) where {dim, T}
     MPSpace(shapevalues, size(grid), gridindices, pointsinblock(grid, xₚ), falses(npoints))
 end
 
-npoints(space::MPSpace) = length(space.shapevalues)
+npoints(space::MPSpace) = length(space.nearsurface)
 gridsize(space::MPSpace) = space.gridsize
 
 function reordering_pointstate!(pointstate::AbstractVector, space::MPSpace)
@@ -152,11 +152,11 @@ function stress_to_force(coord_system::Symbol, N, ∇N, x::Vec, σ::SymmetricSec
     f
 end
 
-function default_point_to_grid!(grid::Grid,
+function default_point_to_grid!(grid::Grid{<: Any, <: Any, <: WLS},
                                 pointstate::StructVector,
-                                space::MPSpace{<: Any, <: Any, <: WLS},
+                                space::MPSpace{<: Any, <: Any, <: WLSValues},
                                 coord_system::Symbol)
-    P = polynomial(space.F)
+    P = polynomial(grid.shapefunction)
     point_to_grid!((grid.state.m, grid.state.w, grid.state.v, grid.state.f), space) do it, p, i
         @_inline_meta
         @_propagate_inbounds_meta
@@ -225,11 +225,11 @@ function velocity_gradient(coord_system::Symbol, x::Vec, v::Vec, ∇v::SecondOrd
 end
 
 function default_grid_to_point!(pointstate::StructVector,
-                                grid::Grid,
-                                space::MPSpace{dim, <: Any, <: WLS},
+                                grid::Grid{dim, <: Any, <: WLS},
+                                space::MPSpace{dim, <: Any, <: WLSValues},
                                 dt::Real,
                                 coord_system::Symbol) where {dim}
-    P = polynomial(space.F)
+    P = polynomial(grid.shapefunction)
     p0 = P(zero(Vec{dim, Int}))
     ∇p0 = P'(zero(Vec{dim, Int}))
     grid_to_point!(pointstate.C, space) do it, i, p
