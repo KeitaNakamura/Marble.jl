@@ -236,7 +236,7 @@ end
 
 blocksize(grid::Grid) = (ncells = size(grid) .- 1; @. (ncells - 1) >> BLOCK_UNIT + 1)
 
-function pointsinblock!(ptsinblk::AbstractArray{Vector{Int}, dim}, grid::Grid{dim}, xₚ::AbstractVector) where {dim}
+function pointindices_in_blocks!(ptsinblk::AbstractArray{Vector{Int}, dim}, grid::Grid{dim}, xₚ::AbstractVector) where {dim}
     @assert size(ptsinblk) == blocksize(grid)
     empty!.(ptsinblk)
     for p in eachindex(xₚ)
@@ -247,9 +247,9 @@ function pointsinblock!(ptsinblk::AbstractArray{Vector{Int}, dim}, grid::Grid{di
     ptsinblk
 end
 
-function pointsinblock(grid::Grid, xₚ::AbstractVector)
+function pointindices_in_blocks(grid::Grid, xₚ::AbstractVector)
     ptsinblk = [Int[] for i in CartesianIndices(blocksize(grid))]
-    pointsinblock!(ptsinblk, grid, xₚ)
+    pointindices_in_blocks!(ptsinblk, grid, xₚ)
 end
 
 

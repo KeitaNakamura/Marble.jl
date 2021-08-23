@@ -2,7 +2,7 @@ struct MPSpace{dim, T, Tshape <: ShapeValues{dim, T}}
     shapevalues::Vector{Tshape}
     gridsize::NTuple{dim, Int}
     gridindices::Vector{Vector{GridIndex{dim}}}
-    pointsinblock::Array{Vector{Int}, dim}
+    pindsinblks::Array{Vector{Int}, dim}
     nearsurface::BitVector
 end
 
@@ -11,19 +11,20 @@ function MPSpace(grid::Grid{dim, T}, xₚ::AbstractVector) where {dim, T}
     npoints = length(xₚ)
     shapevalues = [ShapeValues(T, grid.shapefunction) for _ in 1:npoints]
     gridindices = [GridIndex{dim}[] for _ in 1:npoints]
-    MPSpace(shapevalues, size(grid), gridindices, pointsinblock(grid, xₚ), falses(npoints))
+    MPSpace(shapevalues, size(grid), gridindices, pointindices_in_blocks(grid, xₚ), falses(npoints))
 end
 
 npoints(space::MPSpace) = length(space.nearsurface)
 gridsize(space::MPSpace) = space.gridsize
+pointindices_in_blocks(space::MPSpace) = space.pindsinblks
 
 function reordering_pointstate!(pointstate::AbstractVector, space::MPSpace)
     inds = Vector{Int}(undef, length(pointstate))
     cnt = 1
-    for block in space.pointsinblock
-        @inbounds for i in eachindex(block)
-            inds[cnt] = block[i]
-            block[i] = cnt
+    for pointindices in pointindices_in_blocks(space)
+        @inbounds for i in eachindex(pointindices)
+            inds[cnt] = pointindices[i]
+            pointindices[i] = cnt
             cnt += 1
         end
     end
@@ -51,13 +52,13 @@ function reinit!(space::MPSpace{dim}, grid::Grid{dim}, xₚ::AbstractVector; exc
     resize!(space.nearsurface, length(xₚ))
 
     gridstate = grid.state
-    pointsinblock!(space.pointsinblock, grid, xₚ)
+    pointindices_in_blocks!(pointindices_in_blocks(space), grid, xₚ)
 
     mask = gridstate.mask
     mask .= false
     for color in coloringblocks(gridsize(space))
         Threads.@threads for blockindex in color
-            @inbounds for p in space.pointsinblock[blockindex]
+            @inbounds for p in pointindices_in_blocks(space)[blockindex]
                 inds = neighboring_nodes(grid, xₚ[p])
                 mask[inds] .= true
             end
@@ -71,7 +72,7 @@ function reinit!(space::MPSpace{dim}, grid::Grid{dim}, xₚ::AbstractVector; exc
         end
         for color in coloringblocks(gridsize(space))
             Threads.@threads for blockindex in color
-                @inbounds for p in space.pointsinblock[blockindex]
+                @inbounds for p in pointindices_in_blocks(space)[blockindex]
                     inds = neighboring_nodes(grid, xₚ[p], 1)
                     mask[inds] .= true
                 end
@@ -127,7 +128,7 @@ function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, space::MP
     pointmask !== nothing && @assert length(pointmask) == npoints(space)
     for color in coloringblocks(gridsize(space))
         Threads.@threads for blockindex in color
-            for p in space.pointsinblock[blockindex]
+            for p in pointindices_in_blocks(space)[blockindex]
                 pointmask !== nothing && !pointmask[p] && continue
                 _point_to_grid!(p2g, gridstates, space, p)
             end

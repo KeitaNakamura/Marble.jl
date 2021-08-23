@@ -38,10 +38,10 @@
     @test (Poingr.whichblock(grid, Vec(8.8, 4.6)))::CartesianIndex == CartesianIndex(2, 1)
     @test (Poingr.whichblock(grid, Vec(-8.8, 4.6)))::Nothing == nothing
 
-    # pointsinblock
+    # pointindices_in_blocks
     @test Poingr.blocksize(grid) == (2, 2)
     xₚ = Vec{2, Float64}[(2,2), (8, 18), (8, 21), (4, 18), (5, 18)]
-    @test Poingr.pointsinblock(grid, xₚ) == reshape([[1], [], [4, 5], [2]], 2, 2)
+    @test Poingr.pointindices_in_blocks(grid, xₚ) == reshape([[1], [], [4, 5], [2]], 2, 2)
 
     # coloringblocks
     @test Poingr.coloringblocks((20, 30)) == [[CartesianIndex(1,1) CartesianIndex(1,3); CartesianIndex(3,1) CartesianIndex(3,3)],
