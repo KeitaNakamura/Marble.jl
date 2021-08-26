@@ -11,35 +11,6 @@ Base.promote_type(::Type{Time}, ::Type{<: Real}) = Float64
 Base.promote_type(::Type{<: Real}, ::Type{Time}) = Float64
 Base.show(io::IO, time::Time) = print(io, "t = ", time.tϵ * time.T, " (", time.tϵ, " * ", time.T, ")")
 
-struct BlockedVector{T, V <: AbstractVector{T}} <: AbstractVector{T}
-    data::Vector{V}
-    axis::BlockArrays.BlockedUnitRange{Vector{Int}}
-end
-BlockedVector(data::Vector) = BlockedVector(data, BlockArrays.blockedrange(length.(data)))
-Base.size(x::BlockedVector) = (sum(length, x.data),)
-Base.axes(x::BlockedVector) = (x.axis,)
-@inline function Base.getindex(x::BlockedVector, i::Int)
-    @boundscheck checkbounds(x, i)
-    index = BlockArrays.findblockindex(axes(x, 1), i)
-    @inbounds x.data[index.I[1]][index.α[1]]
-end
-@inline function Base.setindex!(x::BlockedVector, v, i::Int)
-    @boundscheck checkbounds(x, i)
-    index = BlockArrays.findblockindex(axes(x, 1), i)
-    @inbounds x.data[index.I[1]][index.α[1]] = v
-    x
-end
-
-blockedvector(data::Vector) = BlockedVector(data)
-_map_getproperty(::Val{name}, data) where {name} = map(x -> getproperty(x, name), data)
-@generated function blockedvector(data::Vector{<: StructVector{T, <: NamedTuple{names}}}) where {T, names}
-    exps = [:(BlockedVector(_map_getproperty($(Val(name)), data), axis)) for name in names]
-    quote
-        axis = BlockArrays.blockedrange(length.(data))
-        StructVector{T}(($(exps...),))
-    end
-end
-
 mutable struct Block{PointState <: StructVector}
     pointstate::PointState
     buffer::PointState
@@ -53,6 +24,7 @@ mutable struct Scheduler{PointState, dim}
     blocks::Array{Block{PointState}, dim}
     gridsize::NTuple{dim, Int}
     time::Time
+    pointstate::PointState
 end
 
 gridsize(sch::Scheduler) = sch.gridsize
@@ -67,16 +39,16 @@ end
 
 function gather_pointstate(sch::Scheduler)
     @assert issynced(sch)
-    blockedvector(vec(map(blk -> blk.pointstate, sch.blocks)))
+    vcat(map(blk -> blk.pointstate, sch.blocks)...)
 end
 
-function Scheduler(grid::Grid, pointstate::PointState, tϵ::Real) where {PointState <: StructVector}
+function Scheduler(grid::Grid, pointstate::PointState, tϵ::Real = 1) where {PointState <: StructVector}
     blocks = map(pointsinblock(grid, pointstate.x)) do pointindices
         ps = pointstate[pointindices]
         buf = copy(ps)
         Block{PointState}(ps, buf, 0, 0, 0, 1)
     end
-    Scheduler(blocks, size(grid), Time(0, tϵ))
+    Scheduler(blocks, size(grid), Time(0, tϵ), similar(pointstate, 0))
 end
 
 function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Grid; exclude = nothing)
@@ -115,8 +87,6 @@ function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Gri
     end
 
     # for non-empty blocks
-    dTmin = 1//0
-    dTmax = 0//1
     Threads.@threads for block in blocks
         (mod(time.T, block.dT) == 0 && !isempty(block.pointstate)) || continue
         limit = minimum(calculate_timestep, block.pointstate) / time.tϵ
@@ -126,9 +96,8 @@ function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Gri
         while limit ≥ 2*block.dT && mod(time.T, 2*block.dT) == 0
             block.dT *= 2
         end
-        dTmin = min(dTmin, block.dT)
-        dTmax = max(dTmax, block.dT)
     end
+    dTmin, dTmax = extrema(block.dT for block in blocks if mod(time.T, block.dT) == 0 && !isempty(block.pointstate))
 
     # for empty blocks
     @inbounds Threads.@threads for block in blocks
@@ -184,70 +153,51 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
 
     @inbounds Threads.@threads for I in eachindex(blocks)
         block = blocks[I]
-        if mask_equal[I] || mask_smaller[I]
+        if mask_equal[I]
             copy!(block.buffer, block.pointstate)
             block.T_buffer = block.T
-        end
-    end
-
-    blocks_equal   = [ blocks[i].pointstate for i in eachindex(blocks) if mask_equal[i]   ]
-    blocks_larger  = [ blocks[i].buffer     for i in eachindex(blocks) if mask_larger[i]  ]
-    blocks_smaller = [ blocks[i].buffer     for i in eachindex(blocks) if mask_smaller[i] ]
-    pointstate = blockedvector(vcat(blocks_equal, blocks_larger, blocks_smaller))
-
-    microstep(pointstate, dtime)
-
-    # check particles moving to nearby blocks
-    @inbounds for I in CartesianIndices(blocks)
-        block = blocks[I]
-        if mask_equal[I]
-            pstate = block.pointstate
             block.T += dT # advance block for pointstate
         elseif mask_larger[I]
-            pstate = block.buffer
             block.T_buffer += dT # advance block for buffer
-        elseif mask_smaller[I]
-            pstate = block.buffer
-        else
-            continue
-        end
-        p = 1
-        while p ≤ length(pstate)
-            b = whichblock(grid, pstate.x[p]) # recompute which block
-            if b === nothing
-                deleatat!(pstate, p)
-                continue
-            end
-            if b != I # move to nearby block
-                # particles can freely move across the 'equal' and 'larger' blocks
-                # if the particles moved to other blocks, they should be removed from original block.
-                if mask_equal[b]
-                    push!(blocks[b].pointstate, popat!(pstate, p))
-                    continue
-                elseif mask_larger[b]
-                    push!(blocks[b].buffer, popat!(pstate, p))
-                    continue
-                else
-                    deleteat!(pstate, p)
-                    continue
-                end
-            end
-            p += 1
-        end
-        if mask_larger[I]
-            if block.T_buffer == block.T
-                empty!(block.buffer)
-            end
         end
     end
+
+    @inbounds for I in eachindex(blocks)
+        block = blocks[I]
+        if mask_equal[I]
+            append!(sch.pointstate, block.pointstate)
+            empty!(block.pointstate)
+        elseif mask_larger[I]
+            append!(sch.pointstate, block.buffer)
+            empty!(block.buffer)
+        elseif mask_smaller[I]
+            append!(sch.pointstate, block.pointstate)
+        end
+    end
+
+    microstep(sch.pointstate, dtime)
+
+    # check particles moving to nearby blocks
+    @inbounds for p in sch.pointstate
+        I = whichblock(grid, p.x)
+        I === nothing && continue
+        block = blocks[I]
+        if mask_equal[I]
+            push!(block.pointstate, p)
+        elseif mask_larger[I]
+            push!(block.buffer, p)
+        end
+    end
+
+    empty!(sch.pointstate)
 end
 
-function asyncrun!(microstep::Function, sch::Scheduler, grid::Grid)
+function asyncstep!(microstep::Function, sch::Scheduler, grid::Grid)
     time = currenttime(sch)
     dTs = sort(unique(map(block -> block.dT, sch.blocks)), rev = true)
     for dT in dTs
         if mod(time.T, dT) == 0
-            @show dT
+            # @show dT
             advance!(microstep, sch, grid, Time(dT, time.tϵ))
         end
     end
