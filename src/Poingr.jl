@@ -10,6 +10,7 @@ using Reexport
 @reexport using WriteVTK
 using StaticArrays, StructArrays
 using Coordinates
+import BlockArrays
 
 const BLOCK_UNIT = unsigned(3) # 2^3
 
@@ -60,6 +61,11 @@ export
     logindex,
 # VTK
     vtk_points,
+# async
+    currenttime,
+    issynced,
+    gather_pointstate,
+    asyncrun!,
 # dot macros
     @dot_threads,
     @dot_lazy
@@ -88,6 +94,7 @@ include("MaterialModels/DruckerPrager.jl")
 include("MaterialModels/WaterModel.jl")
 include("MaterialModels/NewtonianFluid.jl")
 
+include("async.jl")
 include("dotmacros.jl")
 
 include("logger.jl")

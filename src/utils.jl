@@ -28,6 +28,16 @@ end
         @inbounds StructArrays.createinstance(T, $(exps...))
     end
 end
+@generated function Base.deleteat!(x::StructVector{T, <: NamedTuple{names}}, i::Int) where {T, names}
+    exps = [:(deleteat!(x.$name, i)) for name in names]
+    quote
+        @boundscheck checkbounds(x, i)
+        @inbounds begin
+            $(exps...)
+        end
+        x
+    end
+end
 
 
 function Tensor3D(x::SecondOrderTensor{2,T}) where {T}
