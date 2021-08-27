@@ -27,7 +27,7 @@ mutable struct Scheduler{PointState, dim}
 end
 
 gridsize(sch::Scheduler) = sch.gridsize
-currenttime(sch::Scheduler) = sch.time
+currenttime(sch::Scheduler) = convert(Float64, sch.time)
 
 function issynced(sch::Scheduler)
     iter = (block.T for block in sch.blocks if !isempty(block.pointstate))
@@ -50,7 +50,7 @@ function Scheduler(grid::Grid, pointstate::PointState, tϵ::Real = 1) where {Poi
 end
 
 function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Grid; exclude = nothing)
-    time = currenttime(sch)
+    time = sch.time
     blocks = sch.blocks
 
     nearsurface = falses(size(blocks))
@@ -132,7 +132,7 @@ function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Gri
 end
 
 function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
-    time = currenttime(sch)
+    time = sch.time
 
     dT = dtime.T
     blocks = sch.blocks
@@ -180,7 +180,7 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
         end
     end
 
-    microstep(sch.pointstate, dtime)
+    microstep(sch.pointstate, convert(Float64, dtime))
 
     @inbounds Threads.@threads for I in eachindex(blocks)
         block = blocks[I]
@@ -208,7 +208,7 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
 end
 
 function asyncstep!(microstep::Function, sch::Scheduler, grid::Grid)
-    time = currenttime(sch)
+    time = sch.time
     dTs = sort(unique(map(block -> block.dT, sch.blocks)), rev = true)
     for dT in dTs
         if mod(time.T, dT) == 0
@@ -219,5 +219,5 @@ function asyncstep!(microstep::Function, sch::Scheduler, grid::Grid)
     dT = dTmin - mod(time.T, dTmin)
     dtime = Time(dT, time.tϵ)
     sch.time += dtime
-    dtime
+    convert(Float64, dtime)
 end
