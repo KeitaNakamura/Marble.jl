@@ -30,10 +30,9 @@ gridsize(sch::Scheduler) = sch.gridsize
 currenttime(sch::Scheduler) = sch.time
 
 function issynced(sch::Scheduler)
-    blocks = sch.blocks
-    candidates = Iterators.filter(blk -> !isempty(blk.pointstate), blocks)
-    Ts = map(blk -> blk.T, candidates)
-    all(==(Ts[1]), Ts)
+    iter = (block.T for block in sch.blocks if !isempty(block.pointstate))
+    x0 = first(iter)
+    all(==(x0), iter)
 end
 
 function gather_pointstate(sch::Scheduler)
