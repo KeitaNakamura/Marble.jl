@@ -9,14 +9,13 @@ Base.:+(a::Time, b::Time) = (checktimecoef(a, b); Time(a.T + b.T, a.tϵ))
 Base.:-(a::Time, b::Time) = (checktimecoef(a, b); Time(a.T - b.T, a.tϵ))
 Base.promote_type(::Type{Time}, ::Type{<: Real}) = Float64
 Base.promote_type(::Type{<: Real}, ::Type{Time}) = Float64
-Base.show(io::IO, time::Time) = print(io, "t = ", time.tϵ * time.T, " (", time.tϵ, " * ", time.T, ")")
 
 mutable struct Block{PointState <: StructVector}
     pointstate::PointState
     buffer::PointState
     T::Rational{Int}
     T_buffer::Rational{Int}
-    T_local::Rational{Int}
+    Tmin_local::Rational{Int}
     dT::Rational{Int}
 end
 
@@ -118,6 +117,18 @@ function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Gri
         end
     end
 
+    # most minimum T in local region
+    @inbounds Threads.@threads for I in CartesianIndices(blocks)
+        block = blocks[I]
+        block.dT == dTmin && continue
+        Tmin_local = 1//0
+        for J in neighboring_blocks(grid, I, 1)
+            block_nearby = blocks[J]
+            Tmin_local = min(Tmin_local, block_nearby.T + block_nearby.dT)
+        end
+        block.Tmin_local = Tmin_local
+    end
+
     sch
 end
 
@@ -156,9 +167,6 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
         if mask_equal[I]
             copy!(block.buffer, block.pointstate)
             block.T_buffer = block.T
-            block.T += dT # advance block for pointstate
-        elseif mask_larger[I]
-            block.T_buffer += dT # advance block for buffer
         end
     end
 
@@ -166,10 +174,8 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
         block = blocks[I]
         if mask_equal[I]
             append!(sch.pointstate, block.pointstate)
-            empty!(block.pointstate)
         elseif mask_larger[I]
             append!(sch.pointstate, block.buffer)
-            empty!(block.buffer)
         elseif mask_smaller[I]
             append!(sch.pointstate, block.pointstate)
         end
@@ -177,14 +183,24 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
 
     microstep(sch.pointstate, dtime)
 
-    # check particles moving to nearby blocks
+    @inbounds Threads.@threads for I in eachindex(blocks)
+        block = blocks[I]
+        if mask_equal[I]
+            empty!(block.pointstate)
+            block.T += dT # advance block for pointstate
+        elseif mask_larger[I] && block.Tmin_local == time.T + dT
+            empty!(block.buffer)
+            block.T_buffer += dT # advance block for buffer
+        end
+    end
+
     @inbounds for p in sch.pointstate
         I = whichblock(grid, p.x)
         I === nothing && continue
         block = blocks[I]
         if mask_equal[I]
             push!(block.pointstate, p)
-        elseif mask_larger[I]
+        elseif mask_larger[I] && block.Tmin_local == time.T + dT
             push!(block.buffer, p)
         end
     end
@@ -197,7 +213,6 @@ function asyncstep!(microstep::Function, sch::Scheduler, grid::Grid)
     dTs = sort(unique(map(block -> block.dT, sch.blocks)), rev = true)
     for dT in dTs
         if mod(time.T, dT) == 0
-            # @show dT
             advance!(microstep, sch, grid, Time(dT, time.tϵ))
         end
     end
