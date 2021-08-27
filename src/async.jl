@@ -209,7 +209,7 @@ end
 
 function asyncstep!(microstep::Function, sch::Scheduler, grid::Grid)
     time = sch.time
-    dTs = sort(unique(map(block -> block.dT, sch.blocks)), rev = true)
+    dTs = sort(unique(block.dT for block in sch.blocks), rev = true)
     for dT in dTs
         if mod(time.T, dT) == 0
             advance!(microstep, sch, grid, Time(dT, time.tϵ))

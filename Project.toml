@@ -4,7 +4,6 @@ authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
 version = "0.5.0"
 
 [deps]
-BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 Coordinates = "15ac8fbd-cb39-4be8-bb90-8f74d06af8f8"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"

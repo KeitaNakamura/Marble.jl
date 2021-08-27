@@ -10,7 +10,6 @@ using Reexport
 @reexport using WriteVTK
 using StaticArrays, StructArrays
 using Coordinates
-import BlockArrays
 
 const BLOCK_UNIT = unsigned(3) # 2^3
 
