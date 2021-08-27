@@ -35,9 +35,9 @@ function issynced(sch::Scheduler)
     all(==(x0), iter)
 end
 
-function gather_pointstate(sch::Scheduler)
+function synced_pointstate(sch::Scheduler)
     @assert issynced(sch)
-    vcat(map(blk -> blk.pointstate, sch.blocks)...)
+    vcat((block.pointstate for block in sch.blocks)...)
 end
 
 function Scheduler(grid::Grid, pointstate::PointState, tϵ::Real = 1) where {PointState <: StructVector}
