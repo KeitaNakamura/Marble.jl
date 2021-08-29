@@ -217,9 +217,11 @@ function advance!(microstep::Function, sch::Scheduler, grid::Grid, dtime::Time)
         if mask_equal[I]
             empty!(block.pointstate)
             block.T += dT # advance block for pointstate
+            @assert block.T == time.T + dT
         elseif mask_larger[I] && block.Tmin_local == time.T + dT
             empty!(block.buffer)
             block.T_buffer += dT # advance block for buffer
+            @assert block.T_buffer == time.T + dT
         end
     end
 
