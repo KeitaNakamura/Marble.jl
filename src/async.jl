@@ -101,9 +101,7 @@ function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Gri
             block = blocks[I]
             if temp[I]
                 for J in neighboring_blocks(grid, I, 1)
-                    if !isempty(blocks[J].pointstate)
-                        nearsurface[J] = true
-                    end
+                    nearsurface[J] = true
                 end
             end
         end
@@ -136,7 +134,7 @@ function updatetimestep!(calculate_timestep::Function, sch::Scheduler, grid::Gri
     # for nearsurface blocks
     @inbounds Threads.@threads for I in eachindex(blocks)
         block = blocks[I]
-        (mod(time.T, block.dT) == 0 && !isempty(block.pointstate)) || continue
+        mod(time.T, block.dT) == 0 || continue
         if nearsurface[I]
             @assert mod(time.T, dTmin) == 0
             block.dT = dTmin
