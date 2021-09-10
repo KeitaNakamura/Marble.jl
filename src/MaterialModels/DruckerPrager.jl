@@ -58,21 +58,18 @@ function update_stress(model::DruckerPrager{<: Any, <: SoilElastic}, σ::Symmetr
     Δγ = zero(T)
     for i in 1:20
         dfdσ, f = gradient(σ -> yield_function(model, σ), σ, :all)
-        dNdσ, N = gradient(σ -> plastic_flow(model, σ), σ, :all)
-        # cᵉ, ϵᵉ = gradient(σ -> ∇W̃(model.elastic, σ), σ, :all)
-        cᵉ = ∇²W̃(model.elastic, σ)
+        dgdσ = plastic_flow(model, σ)
         ϵᵉ = ∇W̃(model.elastic, σ)
 
-        R = ϵᵉ - ϵᵉ_trial + Δγ*N
-        # @show norm(R)
+        R = ϵᵉ - ϵᵉ_trial + Δγ*dgdσ
         norm(R) < sqrt(eps(T)) && abs(f) < sqrt(eps(T)) && break
 
-        Ξ = inv(cᵉ + Δγ*dNdσ)
-        dfdσ_Ξ = dfdσ ⊡ Ξ
-        dΔγ = (f - dfdσ_Ξ ⊡ R) / (dfdσ_Ξ ⊡ N)
+        Dᵉ = ∇²W(model.elastic, ϵᵉ)
+        dfdσ_Dᵉ = dfdσ ⊡ Dᵉ
+        dΔγ = (f - dfdσ_Dᵉ ⊡ R) / (dfdσ_Dᵉ ⊡ dgdσ)
 
         Δγ += dΔγ
-        dσ = Ξ ⊡ (-R - dΔγ * N)
+        dσ = Dᵉ ⊡ (-R - dΔγ * dgdσ)
         σ += dσ
     end
     σ
