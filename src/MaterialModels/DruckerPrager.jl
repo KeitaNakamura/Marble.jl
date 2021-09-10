@@ -47,19 +47,20 @@ end
 
 function update_stress(model::DruckerPrager{<: Any, <: SoilElastic}, σ::SymmetricSecondOrderTensor{3, T}, dϵ::SymmetricSecondOrderTensor{3})::typeof(dϵ) where {T}
     # compute the stress at the elastic trial state
-    σₙ = σ
     ϵᵉ = compute_elastic_strain(model.elastic, σ)
     ϵᵉ_trial = ϵᵉ + dϵ
     σ_trial = compute_stress(model.elastic, ϵᵉ_trial)
     yield_function(model, σ_trial) ≤ 0.0 && return σ_trial
 
     # prepare solution vector x
-    σ = σ_trial
+    ϵᵉ = ϵᵉ_trial
     Δγ = zero(T)
-    for i in 1:20
-        dfdσ, f = gradient(σ -> yield_function(model, σ), σ, :all)
+    for i in 1:40
+        σ = ∇W(model.elastic, ϵᵉ)
+        # dfdσ, f = gradient(σ -> yield_function(model, σ), σ, :all)
+        f = yield_function(model, σ)
+        dfdσ = gradient(σ -> yield_function(model, σ), σ)
         dgdσ = plastic_flow(model, σ)
-        ϵᵉ = ∇W̃(model.elastic, σ)
 
         R = ϵᵉ - ϵᵉ_trial + Δγ*dgdσ
         norm(R) < sqrt(eps(T)) && abs(f) < sqrt(eps(T)) && break
@@ -69,8 +70,8 @@ function update_stress(model::DruckerPrager{<: Any, <: SoilElastic}, σ::Symmetr
         dΔγ = (f - dfdσ_Dᵉ ⊡ R) / (dfdσ_Dᵉ ⊡ dgdσ)
 
         Δγ += dΔγ
-        dσ = Dᵉ ⊡ (-R - dΔγ * dgdσ)
-        σ += dσ
+        dϵᵉ = -R - dΔγ * dgdσ
+        ϵᵉ += dϵᵉ
     end
     σ
 end
