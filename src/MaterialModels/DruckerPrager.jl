@@ -55,7 +55,7 @@ function update_stress(model::DruckerPrager{<: Any, <: SoilElastic}, σ::Symmetr
     # prepare solution vector x
     ϵᵉ = ϵᵉ_trial
     Δγ = zero(T)
-    for i in 1:40
+    for i in 1:20
         σ = ∇W(model.elastic, ϵᵉ)
         # dfdσ, f = gradient(σ -> yield_function(model, σ), σ, :all)
         f = yield_function(model, σ)
