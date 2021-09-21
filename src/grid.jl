@@ -186,19 +186,12 @@ julia> Poingr.whichcell(grid, Vec(1.5, 1.5))
 CartesianIndex(2, 2)
 ```
 """
-@generated function whichcell(grid::Grid{dim}, x::Vec{dim}) where {dim}
-    quote
-        ncells = size(grid) .- 1
-        dx = gridsteps(grid)
-        xmin = gridorigin(grid)
-        @inbounds CartesianIndex(
-            @ntuple $dim d -> begin
-                ξ = (x[d] - xmin[d]) / dx[d]
-                0 ≤ ξ < ncells[d] || return nothing
-                unsafe_trunc(Int, floor(ξ)) + 1
-            end
-        )
-    end
+@inline function whichcell(grid::Grid{dim}, x::Vec{dim}) where {dim}
+    dx = gridsteps(grid)
+    xmin = gridorigin(grid)
+    ξ = Tuple((x - xmin) ./ dx)
+    all(@. 0 ≤ ξ ≤ $size(grid)-1) || return nothing
+    CartesianIndex(@. unsafe_trunc(Int, floor(ξ)) + 1)
 end
 
 """
@@ -227,7 +220,7 @@ julia> Poingr.whichblock(grid, Vec(8.5, 1.5))
 CartesianIndex(2, 1)
 ```
 """
-function whichblock(grid::Grid, x::Vec)
+@inline function whichblock(grid::Grid, x::Vec)
     I = whichcell(grid, x)
     I === nothing && return nothing
     CartesianIndex(@. ($Tuple(I)-1) >> BLOCK_UNIT + 1)
