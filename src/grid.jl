@@ -13,7 +13,7 @@ julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
  [3.0, 1.0]  [3.0, 2.0]  [3.0, 3.0]  [3.0, 4.0]
 ```
 """
-struct Grid{dim, T, F <: Union{Nothing, ShapeFunction{dim}}, Node, State <: SpArray{Node, dim}} <: AbstractArray{Vec{dim, T}, dim}
+struct Grid{dim, T, F <: Union{Nothing, ShapeFunction}, Node, State <: SpArray{Node, dim}} <: AbstractArray{Vec{dim, T}, dim}
     shapefunction::F
     coordinates::Coordinate{dim, NTuple{dim, T}, NTuple{dim, Vector{T}}}
     gridsteps::NTuple{dim, T}
