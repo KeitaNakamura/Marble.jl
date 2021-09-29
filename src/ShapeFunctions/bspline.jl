@@ -9,9 +9,9 @@ Create B-spline shape function.
 # Examples
 ```jldoctest
 julia> f = LinearBSpline()
-LinearBSpline{2}()
+LinearBSpline()
 
-julia> f(Vec(0.5, 0.5))
+julia> Poingr.value(f, Vec(0.5, 0.5))
 0.25
 ```
 """
@@ -91,10 +91,10 @@ BSplinePosition(nth = 1, dir = -1)
 julia> pos = Poingr.BSplinePosition([1,2,3,4,5], 1)
 BSplinePosition(nth = 0, dir = 0)
 
-julia> f = QuadraticBSpline{0}()
-QuadraticBSpline{0}()
+julia> f = QuadraticBSpline()
+QuadraticBSpline()
 
-julia> f(0.0, pos)
+julia> Poingr.value(f, 0.0, pos)
 1.0
 ```
 """
@@ -170,7 +170,7 @@ function value(spline::BSpline{3}, ξ::Real, pos::BSplinePosition)::typeof(ξ)
 end
 
 @inline function value(bspline::BSpline, ξ::Vec{dim}, pos::NTuple{dim, BSplinePosition}) where {dim}
-    prod(value.(bspline, ξ, pos))
+    prod(value.(Ref(bspline), ξ, pos))
 end
 
 function Base.show(io::IO, pos::BSplinePosition)
