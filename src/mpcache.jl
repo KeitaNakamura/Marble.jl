@@ -257,8 +257,9 @@ function default_grid_to_point!(pointstate::StructVector,
     @inbounds Threads.@threads for p in eachindex(pointstate)
         Cₚ = pointstate.C[p]
         xₚ = pointstate.x[p]
-        vₚ = Cₚ ⋅ p0
+        vₚ = pointstate.v[p]
         ∇vₚ = velocity_gradient(coord_system, xₚ, vₚ, Cₚ ⋅ ∇p0)
+        vₚ = Cₚ ⋅ p0
         Fₚ = pointstate.F[p]
         pointstate.v[p] = vₚ
         pointstate.∇v[p] = ∇vₚ
