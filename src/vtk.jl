@@ -27,7 +27,13 @@ end
 
 function vtk_points(f::Function, vtk, x)
     vtk = vtk_points(vtk, x)
-    f(vtk)
+    local outfile::Vector{String}
+    try
+        f(vtk)
+    finally
+        outfile = vtk_save(vtk)
+    end
+    outfile
 end
 
 """
