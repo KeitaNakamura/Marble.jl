@@ -43,6 +43,7 @@ export
 # MaterialModel
     MaterialModel,
     LinearElastic,
+    SoilHypoelastic,
     SoilHyperelastic,
     VonMises,
     DruckerPrager,
@@ -96,6 +97,7 @@ abstract type MaterialModel end
 Broadcast.broadcastable(x::MaterialModel) = (x,)
 include("MaterialModels/utils.jl")
 include("MaterialModels/LinearElastic.jl")
+include("MaterialModels/SoilHypoelastic.jl")
 include("MaterialModels/SoilHyperelastic.jl")
 include("MaterialModels/VonMises.jl")
 include("MaterialModels/DruckerPrager.jl")
