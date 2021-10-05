@@ -2,6 +2,8 @@ struct SoilHypoelastic{T} <: MaterialModel
     κ::T
     ν::T
     e0::T
+    K_p⁻¹::T
+    G_p⁻¹::T
     D_p⁻¹::SymmetricFourthOrderTensor{3, T, 36}
 end
 
@@ -13,7 +15,7 @@ function SoilHypoelastic(; κ::Real, ν::Real, e0::Real)
     δ = one(SymmetricSecondOrderTensor{3, T})
     I = one(SymmetricFourthOrderTensor{3, T})
     D = λ * δ ⊗ δ + 2G * I
-    SoilHypoelastic(κ, ν, e0, D)
+    SoilHypoelastic(κ, ν, e0, K, G, D)
 end
 
 function update_stress(model::SoilHypoelastic, σ::SymmetricSecondOrderTensor{3}, dϵ::SymmetricSecondOrderTensor{3})::typeof(dϵ)
@@ -23,4 +25,12 @@ end
 
 function compute_stiffness_tensor(model::SoilHypoelastic, σ::SymmetricSecondOrderTensor{3})
     model.D_p⁻¹ * abs(mean(σ))
+end
+
+function bulkmodulus(model::SoilHypoelastic, σ::SymmetricSecondOrderTensor{3})
+    model.K_p⁻¹ * abs(mean(σ))
+end
+
+function shearmodulus(model::SoilHypoelastic, σ::SymmetricSecondOrderTensor{3})
+    model.G_p⁻¹ * abs(mean(σ))
 end
