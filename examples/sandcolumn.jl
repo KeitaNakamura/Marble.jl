@@ -12,12 +12,11 @@ end
 
 struct PointState
     m::Float64
-    V0::Float64
+    V::Float64
     x::Vec{2, Float64}
     v::Vec{2, Float64}
     b::Vec{2, Float64}
     σ::SymmetricSecondOrderTensor{3, Float64, 6}
-    σ0::SymmetricSecondOrderTensor{3, Float64, 6}
     ϵ::SymmetricSecondOrderTensor{3, Float64, 6}
     ∇v::SecondOrderTensor{3, Float64, 9}
     C::Mat{2, 3, Float64, 6}
@@ -47,9 +46,8 @@ function main(; shape_function = LinearWLS(CubicBSpline()), show_progress::Bool 
                                  0.0 σ_y 0.0
                                  0.0 0.0 σ_x]) |> symmetric
     end
-    @. pointstate.m = ρ₀ * pointstate.V0
+    @. pointstate.m = ρ₀ * pointstate.V
     @. pointstate.b = Vec(0.0, -g)
-    @. pointstate.σ0 = pointstate.σ
 
     @show length(pointstate)
 
@@ -88,7 +86,6 @@ function main(; shape_function = LinearWLS(CubicBSpline()), show_progress::Bool 
         @inbounds Threads.@threads for p in eachindex(pointstate)
             ∇v = pointstate.∇v[p]
             σ_n = pointstate.σ[p]
-            ϵ = pointstate.ϵ[p]
             dϵ = symmetric(∇v) * dt
             σ = update_stress(model, σ_n, dϵ)
             σ = Poingr.jaumann_stress(σ, σ_n, ∇v, dt)
@@ -105,7 +102,8 @@ function main(; shape_function = LinearWLS(CubicBSpline()), show_progress::Bool 
                 dϵ = elastic.Dinv ⊡ (σ - σ_n)
             end
             pointstate.σ[p] = σ
-            pointstate.ϵ[p] = ϵ + dϵ
+            pointstate.ϵ[p] += dϵ
+            pointstate.V[p] *= exp(tr(dϵ))
         end
 
         update!(logger, t += dt)
@@ -121,7 +119,7 @@ function main(; shape_function = LinearWLS(CubicBSpline()), show_progress::Bool 
                         vtk["volumetric strain"] = @dot_lazy volumetric_strain(ϵ)
                         vtk["deviatoric strain"] = @dot_lazy deviatoric_strain(ϵ)
                         vtk["stress"] = pointstate.σ
-                        vtk["strain"] = ϵₚ
+                        vtk["strain"] = ϵ
                         vtk["density"] = @dot_lazy pointstate.m / pointstate.V
                     end
                     pvd[t] = vtm
