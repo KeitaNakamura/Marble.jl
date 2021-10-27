@@ -1,3 +1,55 @@
+struct NodePosition
+    nth::Int
+    dir::Int # 1 or -1
+end
+nthfrombound(pos::NodePosition) = pos.nth
+dirfrombound(pos::NodePosition) = pos.dir
+
+function set_positions!(positions::AbstractVector{NodePosition}, start::Int, dir::Int)
+    @boundscheck checkbounds(positions, start)
+    @assert dir == 1 || dir == -1
+    nth = 0
+    @inbounds for i in start:dir:ifelse(dir==1, lastindex(positions), firstindex(positions))
+        pos = positions[i]
+        if nth < pos.nth
+            positions[i] = NodePosition(nth, dir)
+        end
+        nth += 1
+    end
+    positions
+end
+
+function node_positions!(positions::AbstractVector{NodePosition}, withinbounds::AbstractVector{Bool})
+    @assert size(positions) == size(withinbounds)
+    set_positions!(positions, firstindex(positions), 1)
+    set_positions!(positions, lastindex(positions), -1)
+    for i in eachindex(withinbounds)
+        if withinbounds[i] == true
+            set_positions!(positions, i,  1)
+            set_positions!(positions, i, -1)
+        end
+    end
+    positions
+end
+
+function node_positions!(positions::AbstractArray{NodePosition, dim}, withinbounds::AbstractArray{Bool, dim}, d::Int) where {dim}
+    @assert size(positions) == size(withinbounds)
+    slice = CartesianIndices(ntuple(i -> i == d ? (1:1) : 1:size(positions, i), Val(dim)))
+    @inbounds for I in slice
+        inds = ntuple(i -> ifelse(i == d, :, I[i]), Val(dim))
+        node_positions!(view(positions, inds...), view(withinbounds, inds...))
+    end
+    positions
+end
+
+function node_positions(withinbounds::AbstractArray{Bool, dim}) where {dim}
+    ntuple(Val(dim)) do d
+        positions = fill(NodePosition(size(withinbounds, d)+1, 0), size(withinbounds))
+        node_positions!(positions, withinbounds, d)
+    end
+end
+
+
 """
     Grid([::Type{NodeState}], [::ShapeFunction], axes::AbstractVector...)
 
@@ -19,6 +71,7 @@ struct Grid{dim, T, F <: Union{Nothing, ShapeFunction}, Node, State <: SpArray{N
     gridsteps::NTuple{dim, T}
     state::State
     coordinate_system::Symbol
+    node_positions::NTuple{dim, Array{NodePosition, dim}}
 end
 
 Base.size(x::Grid) = map(length, gridaxes(x))
@@ -28,12 +81,14 @@ gridaxes(x::Grid) = coordinateaxes(x.coordinates)
 gridaxes(x::Grid, i::Int) = (@_propagate_inbounds_meta; gridaxes(x)[i])
 gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 
+node_position(grid::Grid, I) = (@_propagate_inbounds_meta; getindex.(grid.node_positions, Ref(I)))
+
 checkshapefunction(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("`Grid` must include the information of shape function, see help `?Grid` for more details."))
 checkshapefunction(::Grid{<: Any, <: Any, <: ShapeFunction}) = nothing
 
 not_supported_coordinate_system(coordinate_system) =
     throw(ArgumentError("coordinate system `$(coordinate_system)` is not supported, use `:normal` in 1D and 3D, and `:plane_strain` or `:axisymmetric` in 2D."))
-function Grid(::Type{Node}, shapefunction, coordinates::Coordinate{dim}; coordinate_system = nothing) where {Node, dim}
+function Grid(::Type{Node}, shapefunction, coordinates::Coordinate{dim}; coordinate_system = nothing, withinbounds = falses(size(coordinates))) where {Node, dim}
     state = SpArray(StructVector{Node}(undef, 0), SpPattern(size(coordinates)))
     axes = coordinateaxes(coordinates)
     if coordinate_system !== nothing
@@ -54,7 +109,7 @@ function Grid(::Type{Node}, shapefunction, coordinates::Coordinate{dim}; coordin
             coordinate_system = :normal
         end
     end
-    Grid(shapefunction, Coordinate(Array.(axes)), map(step, axes), state, coordinate_system)
+    Grid(shapefunction, Coordinate(Array.(axes)), map(step, axes), state, coordinate_system, node_positions(withinbounds))
 end
 
 Grid(::Type{Node}, shapefunction, axes::Tuple{Vararg{AbstractVector}}; kwargs...) where {Node} = Grid(Node, shapefunction, Coordinate(axes); kwargs...)
@@ -292,6 +347,7 @@ function threadsafe_blocks(dims::NTuple{dim, Int}) where {dim}
     nblocks = @. (ncells - 1) >> BLOCK_UNIT + 1
     vec(map(st -> BlockStepIndices(Coordinate(StepRange.(st, 2, nblocks))), starts))
 end
+
 
 struct Bound{dim, CI <: CartesianIndices{dim}}
     n::Vec{dim, Int}
