@@ -400,21 +400,20 @@ function threadsafe_blocks(dims::NTuple{dim, Int}) where {dim}
 end
 
 
-struct Boundary{dim, T}
-    x::Vec{dim, T}
+struct Boundary{dim}
     n::Vec{dim, Int}
     I::CartesianIndex{dim}
 end
 
 function eachboundary(grid::Grid{dim, T}) where {dim, T}
     _dir(pos::NodePosition, d::Int) = Vec{dim}(i -> ifelse(i === d, -pos.dir, 0))
-    function getbound(grid, i, d)
+    function getbound(grid, I, d)
         @inbounds begin
-            pos = node_position(grid, i, d)
-            Boundary(grid[i], _dir(pos, d), i)
+            pos = node_position(grid, I, d)
+            Boundary(_dir(pos, d), I)
         end
     end
     ntuple(Val(dim)) do d
-        (getbound(grid, I, d) for I in eachindex(grid) if @inbounds(isonbound(grid, I, d)))
+        (getbound(grid, I, d) for I in CartesianIndices(grid) if @inbounds(isonbound(grid, I, d)))
     end |> Iterators.flatten
 end
