@@ -5,48 +5,102 @@ end
 nthfrombound(pos::NodePosition) = pos.nth
 dirfrombound(pos::NodePosition) = pos.dir
 
-function set_positions!(positions::AbstractVector{NodePosition}, start::Int, dir::Int)
-    @boundscheck checkbounds(positions, start)
+struct BoundaryCondition{dim}
+    boundcontours::NTuple{dim, Array{Int, dim}}
+    isonbound::BitArray{dim}
+    node_positions::NTuple{dim, Array{NodePosition, dim}}
+end
+
+node_position(bc::BoundaryCondition, I) = (@_propagate_inbounds_meta; getindex.(bc.node_positions, Ref(I)))
+
+function set_boundcontour!(boundcontour::AbstractVector{Int}, start::Int, dir::Int)
+    @boundscheck checkbounds(boundcontour, start)
     @assert dir == 1 || dir == -1
     nth = 0
-    @inbounds for i in start:dir:ifelse(dir==1, lastindex(positions), firstindex(positions))
-        pos = positions[i]
-        if nth < pos.nth
-            positions[i] = NodePosition(nth, dir)
+    for i in start:dir:ifelse(dir==1, lastindex(boundcontour), firstindex(boundcontour))
+        if nth < boundcontour[i]
+            boundcontour[i] = nth
         end
         nth += 1
     end
-    positions
+    boundcontour
 end
 
-function node_positions!(positions::AbstractVector{NodePosition}, withinbounds::AbstractVector{Bool})
-    @assert size(positions) == size(withinbounds)
-    set_positions!(positions, firstindex(positions), 1)
-    set_positions!(positions, lastindex(positions), -1)
+function set_boundcontour!(boundcontour::AbstractVector{Int}, withinbounds::AbstractVector{Bool})
+    @assert size(boundcontour) == size(withinbounds)
+    set_boundcontour!(boundcontour, firstindex(boundcontour), 1)
+    set_boundcontour!(boundcontour, lastindex(boundcontour), -1)
     for i in eachindex(withinbounds)
         if withinbounds[i] == true
-            set_positions!(positions, i,  1)
-            set_positions!(positions, i, -1)
+            set_boundcontour!(boundcontour, i,  1)
+            set_boundcontour!(boundcontour, i, -1)
         end
     end
-    positions
+    boundcontour
 end
 
-function node_positions!(positions::AbstractArray{NodePosition, dim}, withinbounds::AbstractArray{Bool, dim}, d::Int) where {dim}
-    @assert size(positions) == size(withinbounds)
-    slice = CartesianIndices(ntuple(i -> i == d ? (1:1) : 1:size(positions, i), Val(dim)))
-    @inbounds for I in slice
-        inds = ntuple(i -> ifelse(i == d, :, I[i]), Val(dim))
-        node_positions!(view(positions, inds...), view(withinbounds, inds...))
-    end
-    positions
+function eachaxis(x::AbstractArray{<: Any, dim}, d::Int) where {dim}
+    @assert d ≤ ndims(x)
+    _colon(x) = x:x
+    _eachindex(x, i) = 1:size(x, i)
+    axisindices(x, I) = ntuple(i -> i == d ? _eachindex(x, i) : _colon(I[i]), Val(dim))
+    slice = CartesianIndices(ntuple(i -> i == d ? _colon(1) : _eachindex(x, i), Val(dim)))
+    (vec(view(x, axisindices(x, I)...)) for I in slice)
 end
 
-function node_positions(withinbounds::AbstractArray{Bool, dim}) where {dim}
-    ntuple(Val(dim)) do d
-        positions = fill(NodePosition(size(withinbounds, d)+1, 0), size(withinbounds))
-        node_positions!(positions, withinbounds, d)
+function _direction(contour::AbstractVector{Int})
+    @inbounds begin
+        if length(contour) == 2
+            contour[1] < contour[2] && return 1
+            contour[1] > contour[2] && return -1
+            return 0
+        elseif length(contour) == 3
+            (contour[1] < contour[2] || contour[2] < contour[3]) && return 1
+            (contour[1] > contour[2] || contour[2] > contour[3]) && return -1
+            return 0
+        else
+            error("unreachable")
+        end
     end
+end
+
+function BoundaryCondition(withinbounds::AbstractArray{Bool, dim}) where {dim}
+    boundcontours = ntuple(Val(dim)) do d
+        boundcontour = fill(size(withinbounds, d)+1, size(withinbounds))
+        for args in zip(eachaxis(boundcontour, d), eachaxis(withinbounds, d))
+            set_boundcontour!(args...)
+        end
+        boundcontour
+    end
+    isonbounds = ntuple(Val(dim)) do d
+        boundcontour = boundcontours[d]
+        isonbound = falses(size(boundcontour))
+        for (axis, contour) in zip(eachaxis(isonbound, d), eachaxis(boundcontour, d))
+            @assert length(axis) == length(contour)
+            @inbounds for i in eachindex(axis)
+                if contour[i] == 0
+                    inds = intersect(i-1:i+1, eachindex(axis))
+                    if !all(==(0), @view contour[inds])
+                        axis[i] = true
+                    end
+                end
+            end
+        end
+        isonbound
+    end
+    node_positions = ntuple(Val(dim)) do d
+        boundcontour = boundcontours[d]
+        node_position = Array{NodePosition}(undef, size(boundcontour))
+        for (axis, contour) in zip(eachaxis(node_position, d), eachaxis(boundcontour, d))
+            @assert length(axis) == length(contour)
+            @inbounds for i in eachindex(axis)
+                inds = intersect(i-1:i+1, eachindex(axis))
+                axis[i] = NodePosition(contour[i], _direction(@view contour[inds]))
+            end
+        end
+        node_position
+    end
+    BoundaryCondition(boundcontours, broadcast(|, isonbounds...), node_positions)
 end
 
 
@@ -71,7 +125,7 @@ struct Grid{dim, T, F <: Union{Nothing, ShapeFunction}, Node, State <: SpArray{N
     gridsteps::NTuple{dim, T}
     state::State
     coordinate_system::Symbol
-    node_positions::NTuple{dim, Array{NodePosition, dim}}
+    bc::BoundaryCondition{dim}
 end
 
 Base.size(x::Grid) = map(length, gridaxes(x))
@@ -81,7 +135,7 @@ gridaxes(x::Grid) = coordinateaxes(x.coordinates)
 gridaxes(x::Grid, i::Int) = (@_propagate_inbounds_meta; gridaxes(x)[i])
 gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 
-node_position(grid::Grid, I) = (@_propagate_inbounds_meta; getindex.(grid.node_positions, Ref(I)))
+node_position(grid::Grid, I) = (@_propagate_inbounds_meta; node_position(grid.bc, I))
 
 checkshapefunction(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("`Grid` must include the information of shape function, see help `?Grid` for more details."))
 checkshapefunction(::Grid{<: Any, <: Any, <: ShapeFunction}) = nothing
@@ -109,7 +163,7 @@ function Grid(::Type{Node}, shapefunction, coordinates::Coordinate{dim}; coordin
             coordinate_system = :normal
         end
     end
-    Grid(shapefunction, Coordinate(Array.(axes)), map(step, axes), state, coordinate_system, node_positions(withinbounds))
+    Grid(shapefunction, Coordinate(Array.(axes)), map(step, axes), state, coordinate_system, BoundaryCondition(withinbounds))
 end
 
 Grid(::Type{Node}, shapefunction, axes::Tuple{Vararg{AbstractVector}}; kwargs...) where {Node} = Grid(Node, shapefunction, Coordinate(axes); kwargs...)
