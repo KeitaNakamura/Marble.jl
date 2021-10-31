@@ -46,18 +46,22 @@ end
 function update!(cache::MPCache{dim}, grid::Grid{dim}, xₚ::AbstractVector) where {dim}
     @assert size(grid) == gridsize(cache)
 
-    cache.npoints[] = length(xₚ)
-    allocate!(i -> eltype(cache.shapevalues)(), cache.shapevalues, length(xₚ))
+    shapevalues = cache.shapevalues
+    pointsinblock = cache.pointsinblock
+    spat = cache.spat
 
-    pointsinblock!(cache.pointsinblock, grid, xₚ)
-    sparsity_pattern!(cache.spat, grid, xₚ, cache.pointsinblock) # create sparsity_pattern using pointsinblock
+    cache.npoints[] = length(xₚ)
+    allocate!(i -> eltype(shapevalues)(), shapevalues, length(xₚ))
+
+    pointsinblock!(pointsinblock, grid, xₚ)
+    sparsity_pattern!(spat, grid, xₚ, pointsinblock)
 
     Threads.@threads for p in eachindex(xₚ)
-        @inbounds update!(cache.shapevalues[p], grid, xₚ[p], cache.spat)
+        @inbounds update!(shapevalues[p], grid, xₚ[p], spat)
     end
 
     gridstate = grid.state
-    gridstate.spat .= cache.spat
+    gridstate.spat .= spat
     reinit!(gridstate)
 
     cache
