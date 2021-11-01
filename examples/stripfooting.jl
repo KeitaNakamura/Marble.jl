@@ -93,7 +93,10 @@ function stripfooting(
             ∇v = pointstate.∇v[p]
             σ_n = pointstate.σ[p]
             if smooth_volumetric_strain
-                dϵ = pointstate.dϵ_v[p] / 3 * I + dev(symmetric(∇v) * dt)
+                dϵ̄_vol = symmetric(@Mat [pointstate.dϵ_v[p]/2 0 0
+                                         0 pointstate.dϵ_v[p]/2 0
+                                         0 0                    0])
+                dϵ = dϵ̄_vol + dev(symmetric(∇v) * dt)
             else
                 dϵ = symmetric(∇v) * dt
             end
