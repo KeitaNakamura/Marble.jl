@@ -3,6 +3,7 @@ using Poingr
 function stripfooting(
         shape_function = LinearWLS(CubicBSpline());
         smooth_volumetric_strain = true,
+        CFL = 1.0,
         show_progress::Bool = true,
     )
     ρ₀ = 1.0e3
@@ -59,10 +60,10 @@ function stripfooting(
         dt = minimum(pointstate) do p
             ρ = p.m / p.V
             vc = soundspeed(elastic.K, elastic.G, ρ)
-            minimum(gridsteps(grid)) / vc
+            CFL * minimum(gridsteps(grid)) / vc
         end
 
-        update!(cache, grid, pointstate.x)
+        update!(cache, grid, pointstate)
         default_point_to_grid!(grid, pointstate, cache)
         @. grid.state.v += (grid.state.f / grid.state.m) * dt
 
