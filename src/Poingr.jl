@@ -46,7 +46,7 @@ export
     SoilHyperelastic,
     VonMises,
     DruckerPrager,
-    WaterModel,
+    MonaghanWaterModel,
     NewtonianFluid,
     update_stress,
     soundspeed,
