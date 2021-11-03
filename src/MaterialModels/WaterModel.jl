@@ -11,14 +11,14 @@ function MonaghanWaterModel(; B::Real, γ::Real = 7)
     MonaghanWaterModel{T}(B, γ)
 end
 
-function update_stress(model::MonaghanWaterModel, J::Real)
+function matcalc(::Val{:stress}, model::MonaghanWaterModel, J::Real)
     B = model.B
     γ = model.γ
     p = B * (1/J^γ - 1)
     -p*one(SymmetricSecondOrderTensor{3, typeof(p)})
 end
 
-function calculate_jacobian(model::MonaghanWaterModel, p::Real)
+function matcalc(::Val{:jacobian}, model::MonaghanWaterModel, p::Real)
     B = model.B
     γ = model.γ
     (1 / (p/B + 1))^(1/γ)
