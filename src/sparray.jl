@@ -100,11 +100,13 @@ end
 end
 zerovalue(x) = zerovalue(typeof(x))
 
-reinit!(x::AbstractArray) = (broadcast!(zerovalue, x, x); x)
+fillzero!(x::AbstractArray) = (broadcast!(zerovalue, x, x); x)
+fillzero!(x::SpArray) = (broadcast!(zerovalue, x.data, x.data); x)
+
 function reinit!(x::SpArray{T}) where {T}
     n = reinit!(x.spat)
     resize!(x.data, n)
-    reinit!(x.data)
+    fillzero!(x)
     x
 end
 reinit!(x::SpArray{Nothing}) = x # for Grid without NodeState type
