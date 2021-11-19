@@ -355,7 +355,8 @@ end
     quote
         @_inline_meta
         z = zero(T)
-        isapproxzero(det(x)) ? Mat{dim, dim}(inv(x[1]), $(exps...)) : inv(x)
+        invx = inv(x)
+        any(isnan, invx) ? Mat{dim, dim}(inv(x[1]), $(exps...)) : invx # this is more stable than checking determinant
         # Tensorial.rank(x) != dim ? Mat{dim, dim}(inv(x[1]), $(exps...)) : inv(x) # this is very slow but stable
     end
 end

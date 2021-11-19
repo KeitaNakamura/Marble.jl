@@ -34,5 +34,3 @@ end
 function Tensor2D(x::SymmetricFourthOrderTensor{3,T}) where {T}
     @inbounds SymmetricFourthOrderTensor{2,T}((i,j,k,l) -> @inbounds(x[i,j,k,l]))
 end
-
-isapproxzero(x::Number) = abs(x) <= sqrt(eps(typeof(x)))
