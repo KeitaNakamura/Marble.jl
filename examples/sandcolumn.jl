@@ -34,7 +34,7 @@ function sandcolumn(
 
     # Output files
     ## proj
-    output_dir = joinpath("sandcolumn.tmp")
+    output_dir = joinpath(@__DIR__, "sandcolumn.tmp")
     mkpath(output_dir)
 
     ## paraview

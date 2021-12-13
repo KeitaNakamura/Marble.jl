@@ -41,7 +41,7 @@ function stripfooting(
 
     # Output files
     ## proj
-    output_dir = joinpath("stripfooting.tmp")
+    output_dir = joinpath(@__DIR__, "stripfooting.tmp")
     mkpath(output_dir)
 
     ## paraview
