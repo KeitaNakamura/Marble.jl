@@ -39,23 +39,15 @@ function stripfooting(
 
     @show length(pointstate)
 
-    # Output files
-    ## proj
+    # Outputs
     output_dir = joinpath(@__DIR__, "stripfooting.tmp")
-    mkpath(output_dir)
-
-    ## paraview
     paraview_file = joinpath(output_dir, "out")
+    mkpath(output_dir)
     Poingr.defalut_output_paraview_initialize(paraview_file)
-
-    ## copy this file
-    cp(@__FILE__, joinpath(output_dir, "main.jl"), force = true)
 
     logger = Logger(0.0:0.01:0.1; progress = show_progress)
 
     t = 0.0
-    update!(logger, t)
-    Poingr.defalut_output_paraview_append(paraview_file, grid, pointstate, t, logindex(logger))
     disp = Float64[]
     load = Float64[]
     while !isfinised(logger, t)
@@ -133,5 +125,6 @@ function stripfooting(
             Poingr.defalut_output_paraview_append(paraview_file, grid, pointstate, t, logindex(logger))
         end
     end
+
     disp, load
 end

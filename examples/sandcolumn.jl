@@ -3,7 +3,8 @@ using Poingr
 function sandcolumn(
         shape_function = LinearWLS(CubicBSpline());
         CFL = 1.0,
-        show_progress::Bool = true)
+        show_progress::Bool = true,
+    )
     ρ₀ = 1.6e3
     g = 9.81
     h = 0.3
@@ -16,7 +17,7 @@ function sandcolumn(
     grid = Grid(shape_function, 0:dx:1.0, 0:dx:1.0)
     pointstate = generate_pointstate((x,y) -> 0.4 < x < 0.6 && y < h, grid)
     cache = MPCache(grid, pointstate.x)
-    elastic = LinearElastic(E = E, ν = ν)
+    elastic = LinearElastic(; E, ν)
     model = DruckerPrager(elastic, :plane_strain; c = 0, ϕ, ψ)
 
     for p in 1:length(pointstate)
@@ -32,23 +33,15 @@ function sandcolumn(
 
     @show length(pointstate)
 
-    # Output files
-    ## proj
+    # Outputs
     output_dir = joinpath(@__DIR__, "sandcolumn.tmp")
-    mkpath(output_dir)
-
-    ## paraview
     paraview_file = joinpath(output_dir, "out")
+    mkpath(output_dir)
     Poingr.defalut_output_paraview_initialize(paraview_file)
-
-    ## copy this file
-    cp(@__FILE__, joinpath(output_dir, "main.jl"), force = true)
 
     logger = Logger(0.0:0.01:0.6; progress = show_progress)
 
     t = 0.0
-    update!(logger, t)
-    Poingr.defalut_output_paraview_append(paraview_file, grid, pointstate, t, logindex(logger))
     while !isfinised(logger, t)
 
         dt = minimum(pointstate) do p
