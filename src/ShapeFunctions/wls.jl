@@ -120,13 +120,10 @@ function update!(it::WLSValues{<: Any, <: Any, dim}, grid::Grid{dim}, x::Vec{dim
         I = it.inds[i]
         xᵢ = grid[I]
         ξ = (x - xᵢ) ./ gridsteps(grid)
-        it.w[i] = value(F, ξ)
-    end
-    @inbounds @simd for i in 1:length(it)
-        I = it.inds[i]
-        xᵢ = grid[I]
+        w = value(F, ξ)
         p = P(xᵢ - x)
-        M += it.w[i] * p ⊗ p
+        M += w * p ⊗ p
+        it.w[i] = w
     end
     it.M⁻¹[] = inv(M)
     @inbounds @simd for i in 1:length(it)
