@@ -136,6 +136,35 @@ function _update!(it::WLSValues{<: Any, <: Any, dim}, F, grid::Grid{dim}, x::Vec
     it
 end
 
+function _update!(it::WLSValues{Polynomial{1}, <: Any, dim}, F, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+    it.N .= zero(it.N)
+    it.∇N .= zero(it.∇N)
+    it.w .= zero(it.w)
+    P = polynomial(it)
+    M = zero(it.M⁻¹[])
+    it.x[] = x
+    update_gridindices!(it, grid, x, spat)
+    @inbounds @simd for i in 1:length(it)
+        I = it.inds[i]
+        xᵢ = grid[I]
+        ξ = (x - xᵢ) ./ gridsteps(grid)
+        w = F(ξ)
+        p = P(xᵢ - x)
+        M += w * p ⊗ p
+        it.w[i] = w
+    end
+    it.M⁻¹[] = inv(M)
+    @inbounds @simd for i in 1:length(it)
+        I = it.inds[i]
+        xᵢ = grid[I]
+        q = it.M⁻¹[] ⋅ P(xᵢ - x)
+        wq = it.w[i] * q
+        it.N[i] = @Tensor wq[1]
+        it.∇N[i] = @Tensor wq[2:end]
+    end
+    it
+end
+
 function update!(it::WLSValues{<: Any, <: Any, dim}, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
     F = weight_function(it)
     _update!(it, ξ -> value(F, ξ), grid, x, spat)
