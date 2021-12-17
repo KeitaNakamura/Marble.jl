@@ -58,7 +58,7 @@ Base.adjoint(x::AbstractPolynomial) = PolynomialGradient(x)
 (p::PolynomialGradient)(x) = gradient(p.parent, x)
 
 
-struct WLS{P, W} <: ShapeFunction
+struct WLS{P <: AbstractPolynomial, W <: ShapeFunction} <: ShapeFunction
     poly::P
     weight::W
 end
@@ -72,8 +72,8 @@ WLS{P}(weight::ShapeFunction) where {P} = WLS(P(), weight)
 polynomial(wls::WLS) = wls.poly
 weight_function(wls::WLS) = wls.weight
 
-support_length(wls::WLS) = support_length(weight_function(wls))
-active_length(::WLS) = 1.0 # for sparsity pattern
+support_length(wls::WLS, args...) = support_length(weight_function(wls), args...)
+active_length(::WLS, args...) = 1.0 # for sparsity pattern
 
 
 struct WLSValues{P, W, dim, T, L, M, O} <: ShapeValues{dim, T}
@@ -107,11 +107,10 @@ function ShapeValues{dim, T}(F::WLS{P, W}) where {P, W, dim, T}
     WLSValues{P, W, dim, T, L, M, M^2}()
 end
 
-function update!(it::WLSValues{<: Any, <: Any, dim}, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+function _update!(it::WLSValues{<: Any, <: Any, dim}, F, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
     it.N .= zero(it.N)
     it.∇N .= zero(it.∇N)
     it.w .= zero(it.w)
-    F = weight_function(it)
     P = polynomial(it)
     M = zero(it.M⁻¹[])
     it.x[] = x
@@ -120,7 +119,7 @@ function update!(it::WLSValues{<: Any, <: Any, dim}, grid::Grid{dim}, x::Vec{dim
         I = it.inds[i]
         xᵢ = grid[I]
         ξ = (x - xᵢ) ./ gridsteps(grid)
-        w = value(F, ξ)
+        w = F(ξ)
         p = P(xᵢ - x)
         M += w * p ⊗ p
         it.w[i] = w
@@ -135,6 +134,16 @@ function update!(it::WLSValues{<: Any, <: Any, dim}, grid::Grid{dim}, x::Vec{dim
         it.∇N[i] = wq ⋅ P'(x - x)
     end
     it
+end
+
+function update!(it::WLSValues{<: Any, <: Any, dim}, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+    F = weight_function(it)
+    _update!(it, ξ -> value(F, ξ), grid, x, spat)
+end
+
+function update!(it::WLSValues{<: Any, GIMP, dim}, grid::Grid{dim}, x::Vec{dim}, r::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+    F = weight_function(it)
+    _update!(it, ξ -> value(F, ξ, r./gridsteps(grid)), grid, x, spat)
 end
 
 
