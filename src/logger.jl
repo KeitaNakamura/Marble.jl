@@ -1,5 +1,7 @@
 import ProgressMeter
 
+const PROGRESS_METER_MAX = 100
+
 """
     Logger(logpoints::AbstractVector; progress = false)
 
@@ -71,7 +73,7 @@ end
 function Logger(logpoints::AbstractVector; progress::Bool = false)
     @assert issorted(logpoints)
     pmeter = ProgressMeter.Progress(
-        10000,
+        PROGRESS_METER_MAX,
         barglyphs = ProgressMeter.BarGlyphs('|','█', ['▌'],' ','|',),
         barlen = 20,
         color = :yellow,
@@ -86,7 +88,7 @@ logpoints(logger::Logger) = logger.logpoints
 logindex(logger::Logger) = logger.i
 
 function isfinised(logger::Logger, t::Real)
-    getprogress(logger, t) ≥ 10000
+    percentage(logger, t) ≥ PROGRESS_METER_MAX
 end
 
 islogpoint(logger) = logger.islogpoint
@@ -102,12 +104,17 @@ function update!(logger::Logger, t::Real)
     end
 end
 
-function getprogress(logger::Logger, t::Real)
+function percentage(logger::Logger, t::Real)
     t0 = first(logger)
     t1 = last(logger)
-    floor(Int, 10000 * (t - t0) / (t1 - t0))
+    floor(Int, PROGRESS_METER_MAX * ((t - t0) / (t1 - t0)))
 end
 
 function printprogress(logger::Logger, t::Real)
-    ProgressMeter.update!(logger.pmeter, getprogress(logger, t))
+    perc = percentage(logger, t)
+    if perc >= PROGRESS_METER_MAX
+        ProgressMeter.finish!(logger.pmeter)
+    else
+        ProgressMeter.update!(logger.pmeter, perc)
+    end
 end
