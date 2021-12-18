@@ -1,3 +1,4 @@
+import Dates
 import ProgressMeter
 
 const PROGRESS_METER_MAX = 100
@@ -78,6 +79,8 @@ function Logger(logpoints::AbstractVector; progress::Bool = false)
         barlen = 20,
         color = :yellow,
     )
+    printstyled("Start: ", Dates.now(); color = :yellow)
+    println()
     Logger(logpoints, -1, false, progress, pmeter)
 end
 
