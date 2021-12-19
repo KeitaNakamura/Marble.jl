@@ -54,10 +54,11 @@ function _update!(it::WLSValues{<: Any, <: Any, dim}, F, grid::Grid{dim}, x::Vec
     M = zero(it.M⁻¹[])
     it.x[] = x
     update_gridindices!(it, grid, x, spat)
+    dx⁻¹ = 1 ./ gridsteps(grid)
     @inbounds @simd for i in 1:length(it)
         I = it.inds[i]
         xᵢ = grid[I]
-        ξ = (x - xᵢ) ./ gridsteps(grid)
+        ξ = (x - xᵢ) .* dx⁻¹
         w = F(ξ)
         p = value(P, xᵢ - x)
         M += w * p ⊗ p
@@ -83,10 +84,11 @@ function _update!(it::WLSValues{PolynomialBasis{1}, <: Any, dim}, F, grid::Grid{
     M = zero(it.M⁻¹[])
     it.x[] = x
     update_gridindices!(it, grid, x, spat)
+    dx⁻¹ = 1 ./ gridsteps(grid)
     @inbounds @simd for i in 1:length(it)
         I = it.inds[i]
         xᵢ = grid[I]
-        ξ = (x - xᵢ) ./ gridsteps(grid)
+        ξ = (x - xᵢ) .* dx⁻¹
         w = F(ξ)
         p = value(P, xᵢ - x)
         M += w * p ⊗ p
@@ -98,7 +100,7 @@ function _update!(it::WLSValues{PolynomialBasis{1}, <: Any, dim}, F, grid::Grid{
         xᵢ = grid[I]
         q = it.M⁻¹[] ⋅ value(P, xᵢ - x)
         wq = it.w[i] * q
-        it.N[i] = @Tensor wq[1]
+        it.N[i] = wq[1]
         it.∇N[i] = @Tensor wq[2:end]
     end
     it
@@ -111,7 +113,8 @@ end
 
 function update!(it::WLSValues{<: Any, GIMP, dim}, grid::Grid{dim}, x::Vec{dim}, r::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
     F = weight_function(it)
-    _update!(it, ξ -> value(F, ξ, r./gridsteps(grid)), grid, x, spat)
+    dx⁻¹ = 1 ./ gridsteps(grid)
+    _update!(it, ξ -> value(F, ξ, r.*dx⁻¹), grid, x, spat)
 end
 
 
