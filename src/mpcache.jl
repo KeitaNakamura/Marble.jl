@@ -21,11 +21,14 @@ function reorder_pointstate!(pointstate::AbstractVector, cache::MPCache)
     @assert length(pointstate) == npoints(cache)
     inds = Vector{Int}(undef, length(pointstate))
     cnt = 1
-    for block in pointsinblock(cache)
-        @inbounds for i in eachindex(block)
-            inds[cnt] = block[i]
-            block[i] = cnt
-            cnt += 1
+    for blocks in threadsafe_blocks(gridsize(cache))
+        @inbounds for blockindex in blocks
+            block = pointsinblock(cache)[blockindex]
+            for i in eachindex(block)
+                inds[cnt] = block[i]
+                block[i] = cnt
+                cnt += 1
+            end
         end
     end
     @inbounds @. pointstate = pointstate[inds]
