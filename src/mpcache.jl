@@ -21,13 +21,13 @@ gridsize(cache::MPCache) = cache.gridsize
 npoints(cache::MPCache) = cache.npoints[]
 pointsinblock(cache::MPCache) = cache.pointsinblock
 
-function reorder_pointstate!(pointstate::AbstractVector, cache::MPCache)
-    @assert length(pointstate) == npoints(cache)
+function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
+    @assert length(pointstate) == sum(length, ptsinblk)
     inds = Vector{Int}(undef, length(pointstate))
     cnt = 1
-    for blocks in threadsafe_blocks(gridsize(cache))
+    for blocks in threadsafe_blocks(@. $size(ptsinblk) << BLOCK_UNIT + 1)
         @inbounds for blockindex in blocks
-            block = pointsinblock(cache)[blockindex]
+            block = ptsinblk[blockindex]
             for i in eachindex(block)
                 inds[cnt] = block[i]
                 block[i] = cnt
@@ -38,6 +38,8 @@ function reorder_pointstate!(pointstate::AbstractVector, cache::MPCache)
     @inbounds @. pointstate = pointstate[inds]
     pointstate
 end
+reorder_pointstate!(pointstate::AbstractVector, grid::Grid) = reorder_pointstate!(pointstate, pointsinblock(grid, pointstate.x))
+reorder_pointstate!(pointstate::AbstractVector, cache::MPCache) = reorder_pointstate!(pointstate, pointsinblock(cache))
 
 function allocate!(f, x::Vector, n::Integer)
     len = length(x)
