@@ -6,11 +6,15 @@ struct MPCache{dim, T, Tshape <: ShapeValues{dim, T}}
     spat::Array{Bool, dim}
 end
 
-function MPCache(grid::Grid{dim, T}, xₚ::AbstractVector) where {dim, T}
+function MPCache(grid::Grid{dim, T}, xₚ::AbstractVector{<: Vec}) where {dim, T}
     checkshapefunction(grid)
     npoints = length(xₚ)
     shapevalues = [ShapeValues{dim, T}(grid.shapefunction) for _ in 1:npoints]
     MPCache(shapevalues, size(grid), Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
+end
+
+function MPCache(grid::Grid, pointstate::AbstractVector)
+    MPCache(grid, pointstate.x)
 end
 
 gridsize(cache::MPCache) = cache.gridsize
