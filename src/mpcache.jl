@@ -182,7 +182,7 @@ end
 
 for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
                                              (GIMP, GIMPValues))
-    @eval function default_point_to_grid!(
+    @eval function default_normal_point_to_grid!(
             grid::Grid{<: Any, <: Any, <: $InterpolationType},
             pointstate,
             cache::MPCache{<: Any, <: Any, <: $InterpolationValuesType}
@@ -210,7 +210,7 @@ for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
     end
 end
 
-function default_point_to_grid!(
+function default_normal_point_to_grid!(
         grid::Grid{<: Any, <: Any, <: WLS},
         pointstate,
         cache::MPCache{<: Any, <: Any, <: WLSValues}
@@ -237,14 +237,6 @@ function default_point_to_grid!(
     grid
 end
 
-function default_point_to_grid!(
-        grid::Grid{<: Any, <: Any, <: WLS{PolynomialBasis{1}}},
-        pointstate,
-        cache::MPCache{<: Any, <: Any, <: WLSValues{PolynomialBasis{1}}}
-    )
-    default_affine_point_to_grid!(grid, pointstate, cache)
-end
-
 function default_affine_point_to_grid!(grid::Grid{dim}, pointstate, cache::MPCache{dim}) where {dim}
     point_to_grid!((grid.state.m, grid.state.v, grid.state.f), cache) do mp, p, i
         @_inline_meta
@@ -266,6 +258,18 @@ function default_affine_point_to_grid!(grid::Grid{dim}, pointstate, cache::MPCac
     end
     @dot_threads grid.state.v /= grid.state.m
     grid
+end
+
+function default_point_to_grid!( grid::Grid, pointstate, cache::MPCache)
+    default_normal_point_to_grid!(grid, pointstate, cache)
+end
+
+function default_point_to_grid!(
+        grid::Grid{<: Any, <: Any, <: WLS{PolynomialBasis{1}}},
+        pointstate,
+        cache::MPCache{<: Any, <: Any, <: WLSValues{PolynomialBasis{1}}}
+    )
+    default_affine_point_to_grid!(grid, pointstate, cache)
 end
 
 ##################
@@ -325,7 +329,7 @@ end
 
 for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
                                              (GIMP, GIMPValues))
-    @eval function default_grid_to_point!(
+    @eval function default_normal_grid_to_point!(
             pointstate,
             grid::Grid{<: Any, <: Any, <: $InterpolationType},
             cache::MPCache{<: Any, <: Any, <: $InterpolationValuesType},
@@ -350,7 +354,7 @@ for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
     end
 end
 
-function default_grid_to_point!(
+function default_normal_grid_to_point!(
         pointstate,
         grid::Grid{dim, <: Any, <: WLS},
         cache::MPCache{dim, <: Any, <: WLSValues},
@@ -377,15 +381,6 @@ function default_grid_to_point!(
     pointstate
 end
 
-function default_grid_to_point!(
-        pointstate,
-        grid::Grid{<: Any, <: Any, <: WLS{PolynomialBasis{1}}},
-        cache::MPCache{<: Any, <: Any, <: WLSValues{PolynomialBasis{1}}},
-        dt::Real
-    )
-    default_affine_grid_to_point!(pointstate, grid, cache, dt)
-end
-
 function default_affine_grid_to_point!(pointstate, grid::Grid, cache::MPCache, dt::Real)
     pointvalues = grid_to_point(cache) do mp, i, p
         @_inline_meta
@@ -403,6 +398,19 @@ function default_affine_grid_to_point!(pointstate, grid::Grid, cache::MPCache, d
         pointstate.x[p] = xₚ + vₚ * dt
     end
     pointstate
+end
+
+function default_grid_to_point!(pointstate, grid::Grid, cache::MPCache, dt::Real)
+    default_normal_grid_to_point!(pointstate, grid, cache, dt)
+end
+
+function default_grid_to_point!(
+        pointstate,
+        grid::Grid{<: Any, <: Any, <: WLS{PolynomialBasis{1}}},
+        cache::MPCache{<: Any, <: Any, <: WLSValues{PolynomialBasis{1}}},
+        dt::Real
+    )
+    default_affine_grid_to_point!(pointstate, grid, cache, dt)
 end
 
 @generated function safe_inv(x::Mat{dim, dim, T, L}) where {dim, T, L}
