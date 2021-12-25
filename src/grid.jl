@@ -182,8 +182,13 @@ function Grid(::Type{Node}, interp, coordinates::Coordinate{dim}; coordinate_sys
             coordinate_system = :normal
         end
     end
+    T = promote_type(eltype.(axes)...)
+    if T <: Integer
+        T = Float64 # default
+    end
     dx = map(step, axes)
-    Grid(interp, Coordinate(Array.(axes)), dx, inv.(dx), state, coordinate_system, BoundaryCondition(withinbounds))
+    dx⁻¹ = inv.(dx)
+    Grid(interp, Coordinate(Array{T}.(axes)), T.(dx), T.(dx⁻¹), state, coordinate_system, BoundaryCondition(withinbounds))
 end
 
 function Grid(interp::Interpolation, coordinates::Coordinate{dim, Tup}; kwargs...) where {dim, Tup}
