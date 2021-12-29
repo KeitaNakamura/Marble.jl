@@ -129,13 +129,13 @@ julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
  [3.0, 1.0]  [3.0, 2.0]  [3.0, 3.0]  [3.0, 4.0]
 ```
 """
-struct Grid{dim, T, F <: Union{Nothing, Interpolation}, Node, State <: SpArray{Node, dim}} <: AbstractArray{Vec{dim, T}, dim}
+struct Grid{dim, T, F <: Union{Nothing, Interpolation}, Node, State <: SpArray{Node, dim}, CS <: CoordinateSystem} <: AbstractArray{Vec{dim, T}, dim}
     interpolation::F
     coordinates::Coordinate{dim, NTuple{dim, T}, NTuple{dim, Vector{T}}}
     gridsteps::NTuple{dim, T}
     gridsteps_inv::NTuple{dim, T}
     state::State
-    coordinate_system::Symbol
+    coordinate_system::CS
     bc::BoundaryCondition{dim}
 end
 
@@ -159,36 +159,24 @@ setbounds!(grid::Grid, withinbounds::AbstractArray{Bool}) = setbounds!(grid.bc, 
 check_interpolation(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("`Grid` must include the information of interpolation, see help `?Grid` for more details."))
 check_interpolation(::Grid{<: Any, <: Any, <: Interpolation}) = nothing
 
-not_supported_coordinate_system(coordinate_system) =
-    throw(ArgumentError("coordinate system `$(coordinate_system)` is not supported, use `:normal` in 1D and 3D, and `:plane_strain` or `:axisymmetric` in 2D."))
 function Grid(::Type{Node}, interp, coordinates::Coordinate{dim}; coordinate_system = nothing, withinbounds = falses(size(coordinates))) where {Node, dim}
     state = SpArray(StructVector{Node}(undef, 0), SpPattern(size(coordinates)))
     axes = coordinateaxes(coordinates)
-    if coordinate_system !== nothing
-        coordinate_system = Symbol(coordinate_system) # handle string
-        if dim == 2
-            if coordinate_system != :plane_strain && coordinate_system != :axisymmetric
-                not_supported_coordinate_system(coordinate_system)
-            end
-        else
-            if coordinate_system != :normal
-                not_supported_coordinate_system(coordinate_system)
-            end
-        end
-    else
-        if dim == 2
-            coordinate_system = :plane_strain
-        else
-            coordinate_system = :normal
-        end
-    end
-    T = promote_type(eltype.(axes)...)
-    if T <: Integer
-        T = Float64 # default
-    end
     dx = map(step, axes)
     dx⁻¹ = inv.(dx)
-    Grid(interp, Coordinate(Array{T}.(axes)), T.(dx), T.(dx⁻¹), state, coordinate_system, BoundaryCondition(withinbounds))
+
+    T = promote_type(eltype.(axes)...)
+    T = ifelse(T <: Integer, Float64, T) # use Float64 by default
+
+    Grid(
+        interp,
+        Coordinate(Array{T}.(axes)),
+        T.(dx),
+        T.(dx⁻¹),
+        state,
+        get_coordinate_system(coordinate_system, Val(dim)),
+        BoundaryCondition(withinbounds)
+    )
 end
 
 function Grid(interp::Interpolation, coordinates::Coordinate{dim, Tup}; kwargs...) where {dim, Tup}
