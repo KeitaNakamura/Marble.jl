@@ -218,7 +218,8 @@ end
 end
 
 for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
-                                             (GIMP, GIMPValues))
+                                                     (GIMP, GIMPValues),
+                                                     (KernelCorrection, KernelCorrectionValues),)
     @eval function default_normal_point_to_grid!(
             grid::Grid{<: Any, <: Any, <: $InterpolationType},
             pointstate,
@@ -376,7 +377,8 @@ end
 end
 
 for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
-                                             (GIMP, GIMPValues))
+                                                     (GIMP, GIMPValues),
+                                                     (KernelCorrection, KernelCorrectionValues),)
     @eval function default_normal_grid_to_point!(
             pointstate,
             grid::Grid{<: Any, <: Any, <: $InterpolationType},
