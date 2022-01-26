@@ -27,16 +27,18 @@ function MPValues{dim, T}(c::KernelCorrection{Weight}) where {dim, T, Weight}
     KernelCorrectionValues{Weight, dim, T, L}()
 end
 
-function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim, T}
-    F = weight_function(mpvalues.F)
+weight_function(c::KernelCorrectionValues) = weight_function(c.F)
+
+function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{dim}, x::Vec{dim}, spat::AbstractArray{Bool, dim}, inds, args...) where {dim, T}
+    F = weight_function(mpvalues)
     mpvalues.N .= elzero(mpvalues.N)
     mpvalues.∇N .= elzero(mpvalues.∇N)
     mpvalues.x = x
 
     dx⁻¹ = gridsteps_inv(grid)
-    iscompleted = update_gridindices!(mpvalues, neighboring_nodes(grid, x, support_length(F)), spat)
+    iscompleted = update_gridindices!(mpvalues, inds, spat)
     if iscompleted
-        wᵢ, ∇wᵢ = values_gradients(F, x .* dx⁻¹)
+        wᵢ, ∇wᵢ = values_gradients(F, x .* dx⁻¹, args...)
         @inbounds @simd for i in 1:length(mpvalues)
             I = mpvalues.gridindices[i]
             xᵢ = grid[I]
@@ -52,7 +54,7 @@ function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{di
             I = mpvalues.gridindices[i]
             xᵢ = grid[I]
             ξ = (x - xᵢ) .* dx⁻¹
-            ∇w, w = gradient(ξ -> value(F, ξ), ξ, :all)
+            ∇w, w = gradient(ξ -> value(F, ξ, args...), ξ, :all)
             ∇w = ∇w .* dx⁻¹
             A += w * (xᵢ - x) ⊗ (xᵢ - x)
             β += w * (xᵢ - x)
@@ -89,6 +91,20 @@ function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{di
 
     mpvalues
 end
+
+function update!(mpvalues::KernelCorrectionValues, grid::Grid, x::Vec, spat::AbstractArray{Bool})
+    F = weight_function(mpvalues)
+    dx⁻¹ = gridsteps_inv(grid)
+    _update!(mpvalues, grid, x, spat, neighboring_nodes(grid, x, support_length(F)))
+end
+
+function update!(mpvalues::KernelCorrectionValues{GIMP}, grid::Grid, x::Vec, r::Vec, spat::AbstractArray{Bool})
+    F = weight_function(mpvalues)
+    dx⁻¹ = gridsteps_inv(grid)
+    rdx⁻¹ = r.*dx⁻¹
+    _update!(mpvalues, grid, x, spat, neighboring_nodes(grid, x, support_length(F, rdx⁻¹)), rdx⁻¹)
+end
+
 
 struct KernelCorrectionValue{dim, T} <: MPValue
     N::T
