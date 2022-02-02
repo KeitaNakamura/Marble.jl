@@ -70,13 +70,13 @@ function pointsinblock(grid::Grid, xₚ::AbstractVector)
     pointsinblock!(ptsinblk, grid, xₚ)
 end
 
-function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, hₚ::AbstractVector, ptsinblk::AbstractArray{Vector{Int}}; exclude)
+function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, ptsinblk::AbstractArray{Vector{Int}}; exclude)
     @assert size(spat) == size(grid)
     fill!(spat, false)
     for blocks in threadsafe_blocks(size(grid))
         Threads.@threads for blockindex in blocks
             for p in ptsinblk[blockindex]
-                inds = neighboring_nodes(grid, xₚ[p], hₚ[p])
+                inds = neighboring_nodes(grid, xₚ[p])
                 @inbounds spat[inds] .= true
             end
         end
@@ -86,7 +86,7 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, 
         for blocks in threadsafe_blocks(size(grid))
             Threads.@threads for blockindex in blocks
                 for p in ptsinblk[blockindex]
-                    inds = neighboring_nodes(grid, xₚ[p], 1)
+                    inds = neighboring_nodes(grid, xₚ[p], 2)
                     @inbounds spat[inds] .= true
                 end
             end
@@ -97,18 +97,6 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, 
             spat[i] = false
         end
     end
-    spat
-end
-
-function sparsity_pattern!(spat::Array{Bool}, grid::Grid, pointstate, ptsinblk::AbstractArray{Vector{Int}}; exclude)
-    hₚ = LazyDotArray(p -> support_length(grid.interpolation), 1:length(pointstate))
-    sparsity_pattern!(spat, grid, pointstate.x, hₚ, ptsinblk; exclude)
-    spat
-end
-
-function sparsity_pattern!(spat::Array{Bool}, grid::Grid{<: Any, <: Any, <: Union{GIMP, WLS{<: Any, GIMP}, KernelCorrection{GIMP}}}, pointstate, ptsinblk::AbstractArray{Vector{Int}}; exclude)
-    hₚ = LazyDotArray(rₚ -> support_length(grid.interpolation, rₚ ./ gridsteps(grid)), pointstate.r)
-    sparsity_pattern!(spat, grid, pointstate.x, hₚ, ptsinblk; exclude)
     spat
 end
 
@@ -131,7 +119,7 @@ function update!(cache::MPCache, grid::Grid, pointstate; exclude = nothing)
     allocate!(i -> eltype(mpvalues)(), mpvalues, length(pointstate))
 
     pointsinblock!(pointsinblock, grid, pointstate.x)
-    sparsity_pattern!(spat, grid, pointstate, pointsinblock; exclude)
+    sparsity_pattern!(spat, grid, pointstate.x, pointsinblock; exclude)
 
     Threads.@threads for p in 1:length(pointstate)
         @inbounds update_mpvalues!(mpvalues, grid, pointstate, spat, p)

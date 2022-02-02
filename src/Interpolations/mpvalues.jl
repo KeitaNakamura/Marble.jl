@@ -1,5 +1,7 @@
 abstract type Kernel <: Interpolation end
 
+support_length(it::Interpolation) = nnodes(it) / 2
+
 abstract type MPValues{dim, T} <: AbstractVector{T} end
 abstract type MPValue end
 

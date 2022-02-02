@@ -11,8 +11,7 @@ WLS{Basis}(weight::Kernel) where {Basis} = WLS(Basis(), weight)
 
 basis_function(wls::WLS) = wls.basis
 weight_function(wls::WLS) = wls.weight
-
-support_length(wls::WLS, args...) = support_length(weight_function(wls), args...)
+nnodes(wls::WLS) = nnodes(weight_function(wls))
 
 
 mutable struct WLSValues{Basis, Weight, dim, T, nnodes, L, L²} <: MPValues{dim, T}
@@ -41,7 +40,7 @@ end
 
 function MPValues{dim, T}(F::WLS{Basis, Weight}) where {Basis, Weight, dim, T}
     L = length(value(basis_function(F), zero(Vec{dim, T})))
-    n = nnodes(weight_function(F), Val(dim))
+    n = prod(nfill(nnodes(weight_function(F)), Val(dim)))
     WLSValues{Basis, Weight, dim, T, n, L, L^2}()
 end
 
@@ -130,14 +129,13 @@ end
 
 function update!(mpvalues::WLSValues, grid::Grid, x::Vec, spat::AbstractArray{Bool})
     F = weight_function(mpvalues)
-    _update!(mpvalues, ξ -> value(F, ξ), grid, x, spat, neighboring_nodes(grid, x, support_length(F)))
+    _update!(mpvalues, ξ -> value(F, ξ), grid, x, spat, neighboring_nodes(grid, x, nnodes(F)))
 end
 
 function update!(mpvalues::WLSValues{<: Any, GIMP}, grid::Grid, x::Vec, r::Vec, spat::AbstractArray{Bool})
     F = weight_function(mpvalues)
-    dx⁻¹ = gridsteps_inv(grid)
-    rdx⁻¹ = r.*dx⁻¹
-    _update!(mpvalues, ξ -> value(F, ξ, rdx⁻¹), grid, x, spat, neighboring_nodes(grid, x, support_length(F, rdx⁻¹)))
+    rdx⁻¹ = r .* gridsteps_inv(grid)
+    _update!(mpvalues, ξ -> value(F, ξ, rdx⁻¹), grid, x, spat, neighboring_nodes(grid, x, nnodes(F)))
 end
 
 

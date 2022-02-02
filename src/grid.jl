@@ -195,11 +195,9 @@ Grid(axes::AbstractVector...; kwargs...) = Grid(Nothing, nothing, axes; kwargs..
 end
 
 """
-    Poingr.neighboring_nodes(grid, x::Vec, h)
+    Poingr.neighboring_nodes(grid, x::Vec, nnodes::Int)
 
 Return `CartesianIndices` storing neighboring node indices around `x`.
-`h` is a range for searching and its unit is `gridsteps` `dx`.
-In 1D, for example, the searching range becomes `x ± h*dx`.
 
 # Examples
 ```jldoctest
@@ -212,37 +210,36 @@ julia> grid = Grid(0.0:1.0:5.0)
  [4.0]
  [5.0]
 
-julia> Poingr.neighboring_nodes(grid, Vec(1.5), 1)
+julia> Poingr.neighboring_nodes(grid, Vec(1.5), 2)
 2-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(2,)
  CartesianIndex(3,)
 
-julia> Poingr.neighboring_nodes(grid, Vec(1.5), 2)
+julia> Poingr.neighboring_nodes(grid, Vec(1.7), 3)
 4-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
- CartesianIndex(1,)
  CartesianIndex(2,)
  CartesianIndex(3,)
  CartesianIndex(4,)
 ```
 """
-@inline function neighboring_nodes(grid::Grid{dim}, x::Vec{dim}, h) where {dim}
+@inline function neighboring_nodes(grid::Grid{dim}, x::Vec{dim}, nnodes::Int) where {dim}
     dx⁻¹ = gridsteps_inv(grid)
     xmin = gridorigin(grid)
     ξ = Tuple((x - xmin) .* dx⁻¹)
     T = eltype(ξ)
     all(@. zero(T) ≤ ξ ≤ T($size(grid)-1)) || return CartesianIndices(nfill(1:0, Val(dim)))
-    # To handle zero division in nodal calculations such as fᵢ/mᵢ, we use a bit small `h`.
-    # This means `neighboring_nodes` doesn't include bounds of range.
-    _neighboring_nodes(size(grid), ξ, @. T(h) - sqrt(eps(T)))
+    _neighboring_nodes(size(grid), ξ, nnodes)
 end
 @inline function neighboring_nodes(grid::Grid, x::Vec)
     check_interpolation(grid)
-    neighboring_nodes(grid, x, support_length(grid.interpolation))
+    neighboring_nodes(grid, x, nnodes(grid.interpolation))
 end
 
-@inline function _neighboring_nodes(dims::Dims, ξ, h)
-    imin = Tuple(@. max(unsafe_trunc(Int,  ceil(ξ - h)) + 1, 1))
-    imax = Tuple(@. min(unsafe_trunc(Int, floor(ξ + h)) + 1, dims))
+@inline function _neighboring_nodes(dims::Dims{dim}, ξ::NTuple{dim, T}, nnodes::Int) where {dim, T}
+    h = T(0.5) * nnodes
+    rhs = @. unsafe_trunc(Int, floor(ξ + h)) + 1
+    imin = Tuple(@. max(rhs - nnodes + 1, 1))
+    imax = Tuple(@. min(rhs, dims))
     CartesianIndices(@. UnitRange(imin, imax))
 end
 

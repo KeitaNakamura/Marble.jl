@@ -3,7 +3,7 @@ struct KernelCorrection{Weight <: Kernel} <: Interpolation
 end
 
 weight_function(c::KernelCorrection) = c.weight
-support_length(c::KernelCorrection, args...) = support_length(weight_function(c), args...)
+nnodes(c::KernelCorrection) = nnodes(weight_function(c))
 
 mutable struct KernelCorrectionValues{Weight, dim, T, nnodes} <: MPValues{dim, T}
     F::KernelCorrection{Weight}
@@ -23,7 +23,7 @@ function KernelCorrectionValues{Weight, dim, T, nnodes}() where {Weight, dim, T,
 end
 
 function MPValues{dim, T}(c::KernelCorrection{Weight}) where {dim, T, Weight}
-    L = nnodes(Weight(), Val(dim))
+    L = prod(nfill(nnodes(Weight()), Val(dim)))
     KernelCorrectionValues{Weight, dim, T, L}()
 end
 
@@ -95,14 +95,13 @@ end
 function update!(mpvalues::KernelCorrectionValues, grid::Grid, x::Vec, spat::AbstractArray{Bool})
     F = weight_function(mpvalues)
     dx⁻¹ = gridsteps_inv(grid)
-    _update!(mpvalues, grid, x, spat, neighboring_nodes(grid, x, support_length(F)))
+    _update!(mpvalues, grid, x, spat, neighboring_nodes(grid, x, nnodes(F)))
 end
 
 function update!(mpvalues::KernelCorrectionValues{GIMP}, grid::Grid, x::Vec, r::Vec, spat::AbstractArray{Bool})
     F = weight_function(mpvalues)
     dx⁻¹ = gridsteps_inv(grid)
-    rdx⁻¹ = r.*dx⁻¹
-    _update!(mpvalues, grid, x, spat, neighboring_nodes(grid, x, support_length(F, rdx⁻¹)), rdx⁻¹)
+    _update!(mpvalues, grid, x, spat, neighboring_nodes(grid, x, nnodes(F)), r .* dx⁻¹)
 end
 
 

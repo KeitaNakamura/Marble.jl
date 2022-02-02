@@ -1,8 +1,6 @@
 struct GIMP <: Kernel end
 
-support_length(::GIMP, l) = 1.0 .+ l # `l` must be normalized by `dx`
-
-@pure nnodes(f::GIMP, ::Val{dim}) where {dim} = prod(nfill(3, Val(dim)))
+nnodes(::GIMP) = 3
 
 @inline function value(::GIMP, ξ::Real, l::Real) # `l` is normalized radius
     ξ = abs(ξ)
@@ -75,7 +73,7 @@ function GIMPValues{dim, T, L}() where {dim, T, L}
 end
 
 function MPValues{dim, T}(F::GIMP) where {dim, T}
-    L = nnodes(F, Val(dim))
+    L = prod(nfill(nnodes(F), Val(dim)))
     GIMPValues{dim, T, L}()
 end
 
@@ -85,7 +83,7 @@ function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, x::Vec{dim}, r::Vec
     mpvalues.∇N .= elzero(mpvalues.∇N)
     mpvalues.x = x
     dx⁻¹ = gridsteps_inv(grid)
-    update_gridindices!(mpvalues, neighboring_nodes(grid, x, support_length(F, r .* dx⁻¹)), spat)
+    update_gridindices!(mpvalues, neighboring_nodes(grid, x, nnodes(F)), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = mpvalues.gridindices[i]
         xᵢ = grid[I]

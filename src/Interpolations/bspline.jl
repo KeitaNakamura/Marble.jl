@@ -25,12 +25,10 @@ const LinearBSpline    = BSpline{1}
 const QuadraticBSpline = BSpline{2}
 const CubicBSpline     = BSpline{3}
 
-support_length(::BSpline{1}) = 1.0
-support_length(::BSpline{2}) = 1.5
-support_length(::BSpline{3}) = 2.0
-support_length(::BSpline{4}) = 2.5
-
-@pure nnodes(bspline::BSpline, ::Val{dim}) where {dim} = prod(nfill(Int(2*support_length(bspline)), Val(dim)))
+nnodes(::BSpline{1}) = 2
+nnodes(::BSpline{2}) = 3
+nnodes(::BSpline{3}) = 4
+nnodes(::BSpline{4}) = 5
 
 
 fract(x) = x - floor(x)
@@ -208,7 +206,7 @@ function BSplineValues{order, dim, T, L}() where {order, dim, T, L}
 end
 
 function MPValues{dim, T}(F::BSpline{order}) where {order, dim, T}
-    L = nnodes(F, Val(dim))
+    L = prod(nfill(nnodes(F), Val(dim)))
     BSplineValues{order, dim, T, L}()
 end
 
@@ -218,7 +216,7 @@ function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, x::Vec{d
     mpvalues.∇N .= elzero(mpvalues.∇N)
     mpvalues.x = x
     dx⁻¹ = gridsteps_inv(grid)
-    update_gridindices!(mpvalues, neighboring_nodes(grid, x, support_length(F)), spat)
+    update_gridindices!(mpvalues, neighboring_nodes(grid, x, nnodes(F)), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = mpvalues.gridindices[i]
         xᵢ = grid[I]
