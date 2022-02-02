@@ -230,8 +230,8 @@ for (InterpolationType, InterpolationValuesType) in ((BSpline, BSplineValues),
             f = -Vₚ * stress_to_force(grid.coordinate_system, N, ∇N, xₚ, σₚ) + m * bₚ
             m, mv, mv + dt*f
         end
-        @dot_threads grid.state.v_n /= grid.state.m
-        @dot_threads grid.state.v /= grid.state.m
+        @dot_threads grid.state.v_n = grid.state.v_n /₀ grid.state.m
+        @dot_threads grid.state.v = grid.state.v /₀ grid.state.m
         grid
     end
 end
@@ -259,8 +259,8 @@ function default_normal_point_to_grid!(
         f = -Vₚ * stress_to_force(grid.coordinate_system, N, ∇N, xₚ, σₚ) + m * bₚ
         m, mv, mv + dt*f
     end
-    @dot_threads grid.state.v_n /= grid.state.m
-    @dot_threads grid.state.v /= grid.state.m
+    @dot_threads grid.state.v_n = grid.state.v_n /₀ grid.state.m
+    @dot_threads grid.state.v = grid.state.v /₀ grid.state.m
     grid
 end
 
@@ -282,8 +282,8 @@ function default_affine_point_to_grid!(grid::Grid{dim}, pointstate, cache::MPCac
         f = -Vₚ * stress_to_force(grid.coordinate_system, N, ∇N, xₚ, σₚ) + m * bₚ
         m, mv, mv + dt*f
     end
-    @dot_threads grid.state.v_n /= grid.state.m
-    @dot_threads grid.state.v /= grid.state.m
+    @dot_threads grid.state.v_n = grid.state.v_n /₀ grid.state.m
+    @dot_threads grid.state.v = grid.state.v /₀ grid.state.m
     grid
 end
 
@@ -453,7 +453,7 @@ end
     quote
         @_inline_meta
         z = zero(T)
-        isapproxzero(det(x)) ? Mat{dim, dim}(inv(x[1]), $(exps...)) : inv(x)
+        isapproxzero(det(x)) ? Mat{dim, dim}(1 /₀ x[1], $(exps...)) : inv(x)
         # Tensorial.rank(x) != dim ? Mat{dim, dim}(inv(x[1]), $(exps...)) : inv(x) # this is very slow but stable
     end
 end

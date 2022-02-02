@@ -23,7 +23,7 @@ promote_tuple_length(xs::Type{<: NTuple{N, Any}}...) where {N} = N
     end
 end
 
-isapproxzero(x::Number) = abs(x) <= sqrt(eps(typeof(x)))
+@inline isapproxzero(x::Number) = abs(x) < sqrt(eps(typeof(x)))
 
 macro _inline_propagate_inbounds_meta()
     quote
@@ -50,3 +50,5 @@ end
     :(@_inline_meta; T(($(exps...),)))
 end
 recursive_zero(x) = recursive_zero(typeof(x))
+
+@inline /₀(x::Union{T, Tensor{<: Any, T}}, y::T) where {T <: Real} = ifelse(isapproxzero(y), zero(x), x/y)
