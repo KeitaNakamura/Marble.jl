@@ -61,20 +61,19 @@ function Contact(cond::Symbol, args...; kwargs...)
 end
 
 issticky(contact::Contact) = contact.coef === Inf # Inf is a special value for sticky
-isslip(contact::Contact) = contact.coef === 0.0
+isslip(contact::Contact) = contact.coef === 0.0 && contact.thresh === 0.0
 isfriction(contact::Contact) = !issticky(contact) && !isslip(contact)
 
 separation(contact::Contact) = (@assert !issticky(contact); contact.sep)
-getfriction(contact::Contact) = (@assert isfriction(contact); contact.coef)
 
 function Base.show(io::IO, contact::Contact)
     issticky(contact)   && return print(io, "Contact(:sticky)")
     isslip(contact)     && return print(io, "Contact(:slip; sep = $(contact.sep))")
-    isfriction(contact) && return print(io, "Contact(:friction, $(contact.coef); sep = $(contact.sep))")
+    isfriction(contact) && return print(io, "Contact(:friction, $(contact.coef); sep = $(contact.sep), thresh = $(contact.thresh))")
     error("unreachable")
 end
 
-function (contact::Contact)(v::Vec{dim, T}, n::Vec)::Vec{dim, T} where {dim, T}
+function (contact::Contact)(v::Vec{dim, T}, n::Vec{dim, T})::Vec{dim, T} where {dim, T}
     v_sticky = -v # contact force for sticky contact
     issticky(contact) && return v_sticky
     d = (v_sticky ⋅ n)
@@ -83,12 +82,13 @@ function (contact::Contact)(v::Vec{dim, T}, n::Vec)::Vec{dim, T} where {dim, T}
     vt = v_sticky - vn
     if isfriction(contact)
         if d < 0
-            μ = T(getfriction(contact))
-            iszero(μ) && return vn # this is necessary since `norm(vt)` can be zero
-            c = contact.thresh
+            μ = T(contact.coef)
+            c = T(contact.thresh)
             return vn + min(1, (c + μ*norm(vn))/norm(vt)) * vt # put `norm(vt)` inside of `min` to handle with deviding zero
         else
             return ifelse(!separation(contact), vn, zero(vn))
         end
     end
 end
+
+(contact::Contact)(v::Vec, n::Vec) = contact(promote(v, n)...)
