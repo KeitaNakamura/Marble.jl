@@ -47,11 +47,12 @@ julia> v + contact(v, n)
 struct Contact
     coef::Float64
     sep::Bool
+    thresh::Float64
 end
 
-Contact_sticky() = Contact(Inf, false)
-Contact_slip(; sep = false) = Contact(0.0, sep)
-Contact_friction(coef; sep = false) = Contact(coef, sep)
+Contact_sticky() = Contact(Inf, false, 0.0)
+Contact_slip(; sep = false) = Contact(0.0, sep, 0.0)
+Contact_friction(coef; sep = false, thresh = 0.0) = Contact(coef, sep, thresh)
 function Contact(cond::Symbol, args...; kwargs...)
     cond == :sticky   && return Contact_sticky(args...; kwargs...)
     cond == :slip     && return Contact_slip(args...; kwargs...)
@@ -84,7 +85,8 @@ function (contact::Contact)(v::Vec{dim, T}, n::Vec)::Vec{dim, T} where {dim, T}
         if d < 0
             μ = T(getfriction(contact))
             iszero(μ) && return vn # this is necessary since `norm(vt)` can be zero
-            return vn + min(1, μ * norm(vn)/norm(vt)) * vt # put `norm(vt)` inside of `min` to handle with deviding zero
+            c = contact.thresh
+            return vn + min(1, (c + μ*norm(vn))/norm(vt)) * vt # put `norm(vt)` inside of `min` to handle with deviding zero
         else
             return ifelse(!separation(contact), vn, zero(vn))
         end
