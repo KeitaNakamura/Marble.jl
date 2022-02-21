@@ -1,7 +1,7 @@
 using Poingr
 
 function stripfooting(
-        shape_function = LinearWLS(QuadraticBSpline());
+        interp = LinearWLS(QuadraticBSpline());
         ν = 0.3,
         dx = 0.1,
         CFL = 1.0,
@@ -19,7 +19,7 @@ function stripfooting(
     E = 1e9
     v_footing = Vec(0.0, -4.0e-3)
 
-    grid = Grid(shape_function, 0:dx:5.0, 0:dx:5.1)
+    grid = Grid(interp, 0:dx:5.0, 0:dx:5.1)
     isfooting = map(x -> x[1] ≤ 0.5 && 5.0 ≤ x[2] ≤ 5.1, grid)
     setbounds!(grid, isfooting)
     pointstate = generate_pointstate((x,y) -> y < h, grid)

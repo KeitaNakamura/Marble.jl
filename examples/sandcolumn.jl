@@ -1,7 +1,7 @@
 using Poingr
 
 function sandcolumn(
-        shape_function = LinearWLS(QuadraticBSpline());
+        interp = LinearWLS(QuadraticBSpline());
         dx = 0.01,
         CFL = 1.0,
         transfer = Transfer(),
@@ -16,7 +16,7 @@ function sandcolumn(
     ν = 0.333
     E = 1e6
 
-    grid = Grid(shape_function, 0:dx:1.0, 0:dx:1.0)
+    grid = Grid(interp, 0:dx:1.0, 0:dx:1.0)
     pointstate = generate_pointstate((x,y) -> 0.4 < x < 0.6 && y < h, grid)
     cache = MPCache(grid, pointstate.x)
     elastic = LinearElastic(; E, ν)
