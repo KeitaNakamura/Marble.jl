@@ -6,7 +6,7 @@ function stripfooting(
         dx = 0.1,
         CFL = 1.0,
         handle_volumetric_locking::Bool = false,
-        affine_transfer::Bool = false,
+        transfer = Transfer(),
         show_progress::Bool = true,
         outdir = joinpath(@__DIR__, "stripfooting.tmp"),
     )
@@ -61,11 +61,7 @@ function stripfooting(
 
         update!(cache, grid, pointstate)
 
-        if affine_transfer
-            default_affine_point_to_grid!(grid, pointstate, cache, dt)
-        else
-            default_point_to_grid!(grid, pointstate, cache, dt)
-        end
+        transfer.point_to_grid!(grid, pointstate, cache, dt)
 
         vertical_load = 0.0
         @inbounds for bound in eachboundary(grid)
@@ -83,11 +79,7 @@ function stripfooting(
             grid.state.v[bound.I] = v
         end
 
-        if affine_transfer
-            default_affine_grid_to_point!(pointstate, grid, cache, dt)
-        else
-            default_grid_to_point!(pointstate, grid, cache, dt)
-        end
+        transfer.grid_to_point!(pointstate, grid, cache, dt)
 
         @. tr∇v = tr(pointstate.∇v)
         if handle_volumetric_locking
