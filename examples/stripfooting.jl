@@ -69,13 +69,13 @@ function stripfooting(
             v = grid.state.v[bound.I]
             n = bound.n
             x = grid[bound.I]
-            if isfooting[bound.I] && n == Vec(0, 1)
+            if isfooting[bound.I] && n == Vec(0, -1)
                 vertical_load += grid.state.m[bound.I] * ((v-v_footing)[2] / dt)
                 v = v_footing
-            elseif n == Vec(0, -1) # bottom
-                v += Contact(:sticky)(v, n)
+            elseif n == Vec(0, 1) # bottom
+                v += ContactMohrCoulomb(:sticky)(v, n)
             else
-                v += Contact(:slip)(v, n)
+                v += ContactMohrCoulomb(:slip)(v, n)
             end
             grid.state.v[bound.I] = v
         end
