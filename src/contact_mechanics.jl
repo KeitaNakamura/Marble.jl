@@ -43,11 +43,11 @@ function ContactMohrCoulomb(cond::Symbol; separation = false)
     throw(ArgumentError("Use `:sticky` or `:slip` for contact condition"))
 end
 
-issticky(contact::ContactMohrCoulomb) = isinf(contact.μ) && !contact.separation
-isslip(contact::ContactMohrCoulomb) = iszero(contact.μ) && iszero(contact.c)
+issticky(cond::ContactMohrCoulomb) = isinf(cond.μ) && !cond.separation
+isslip(cond::ContactMohrCoulomb) = iszero(cond.μ) && iszero(cond.c)
 
 """
-    (::ContactMohrCoulomb)(v::Vec, n::Vec)
+    contacted(::ContactMohrCoulomb, v::Vec, n::Vec)
 
 Compute velocity `v` caused by contact.
 The other quantities, which are equivalent to velocity such as momentum and force, are also available.
@@ -55,30 +55,32 @@ The other quantities, which are equivalent to velocity such as momentum and forc
 
 # Examples
 ```jldoctest
-julia> contact = ContactMohrCoulomb(:slip, separation = false);
+julia> cond = ContactMohrCoulomb(:slip, separation = false);
 
 julia> v = Vec(1.0, -1.0); n = Vec(0.0, 1.0);
 
-julia> v + contact(v, n)
+julia> v + contacted(cond, v, n)
 2-element Vec{2, Float64}:
  1.0
  0.0
 ```
 """
-function (contact::ContactMohrCoulomb)(v::Vec{dim, T}, n::Vec{dim, T})::Vec{dim, T} where {dim, T}
+function contacted(cond::ContactMohrCoulomb, v::Vec{dim, T}, n::Vec{dim, T})::Vec{dim, T} where {dim, T}
     v_sticky = -v # contact force for sticky contact
-    issticky(contact) && return v_sticky
+    issticky(cond) && return v_sticky
     d = v_sticky ⋅ n
     vn = d * n
-    isslip(contact) && return ifelse(d > 0 || !contact.separation, vn, zero(vn))
+    isslip(cond) && return ifelse(d > 0 || !cond.separation, vn, zero(vn))
     vt = v_sticky - vn
     if d > 0
-        μ = T(contact.μ)
-        c = T(contact.c)
+        μ = T(cond.μ)
+        c = T(cond.c)
         return vn + min(1, (c + μ*norm(vn))/norm(vt)) * vt # put `norm(vt)` inside of `min` to handle with deviding zero
     else
-        return ifelse(!contact.separation, vn, zero(vn))
+        return ifelse(!cond.separation, vn, zero(vn))
     end
 end
 
-(contact::ContactMohrCoulomb)(v::Vec, n::Vec) = contact(promote(v, n)...)
+function contacted(cond::ContactMohrCoulomb, v::Vec, n::Vec)
+    contacted(cond, promote(v, n)...)
+end

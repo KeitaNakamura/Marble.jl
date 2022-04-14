@@ -60,9 +60,9 @@ function sandcolumn(
             v = grid.state.v[bound.I]
             n = bound.n
             if n == Vec(0, 1) # bottom
-                v += ContactMohrCoulomb(μ = 0.2)(v, n)
+                v += contacted(ContactMohrCoulomb(μ = 0.2), v, n)
             else
-                v += ContactMohrCoulomb(μ = 0)(v, n)
+                v += contacted(ContactMohrCoulomb(μ = 0), v, n)
             end
             grid.state.v[bound.I] = v
         end
