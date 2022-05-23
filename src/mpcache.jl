@@ -271,14 +271,14 @@ function smooth_pointstate!(vals::AbstractVector, Vₚ::AbstractVector, grid::Gr
     basis = PolynomialBasis{1}()
     point_to_grid!((grid.state.poly_coef, grid.state.poly_mat), cache) do mp, p, i
         @_inline_propagate_inbounds_meta
-        P = value(basis, mp.x - grid[i])
+        P = value(basis, mp.xp - grid[i])
         VP = (mp.N * Vₚ[p]) * P
         VP * vals[p], VP ⊗ P
     end
     @dot_threads grid.state.poly_coef = safe_inv(grid.state.poly_mat) ⋅ grid.state.poly_coef
     grid_to_point!(vals, cache) do mp, i, p
         @_inline_propagate_inbounds_meta
-        P = value(basis, mp.x - grid[i])
+        P = value(basis, mp.xp - grid[i])
         mp.N * (P ⋅ grid.state.poly_coef[i])
     end
 end

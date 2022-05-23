@@ -240,8 +240,8 @@ function (::G2P_WLS)(pointstate, grid::Grid{dim}, cache::MPCache, dt::Real) wher
     grid_to_point!(pointstate.C, cache) do mp, i, p
         @_inline_propagate_inbounds_meta
         w = mp.w
-        M⁻¹ = mp.M⁻¹
-        grid.state.v[i] ⊗ (w * M⁻¹ ⋅ value(P, grid[i] - pointstate.x[p]))
+        Minv = mp.Minv
+        grid.state.v[i] ⊗ (w * Minv ⋅ value(P, grid[i] - pointstate.x[p]))
     end
     @inbounds Threads.@threads for p in 1:length(pointstate)
         Cₚ = pointstate.C[p]
