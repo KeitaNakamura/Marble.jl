@@ -2,7 +2,7 @@ struct GIMP <: Kernel end
 
 getsupportlength(::GIMP, l) = 1.0 .+ l # `l` must be normalized by `dx`
 
-@pure nnodes(f::GIMP, ::Val{dim}) where {dim} = prod(nfill(3, Val(dim)))
+@pure getnnodes(f::GIMP, ::Val{dim}) where {dim} = prod(nfill(3, Val(dim)))
 
 @inline function value(::GIMP, ξ::Real, l::Real) # `l` is normalized radius
     ξ = abs(ξ)
@@ -81,7 +81,7 @@ function GIMPValues{dim, T, L}() where {dim, T, L}
 end
 
 function MPValues{dim, T}(F::GIMP) where {dim, T}
-    L = nnodes(F, Val(dim))
+    L = getnnodes(F, Val(dim))
     GIMPValues{dim, T, L}()
 end
 

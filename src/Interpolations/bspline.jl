@@ -30,7 +30,7 @@ getsupportlength(::BSpline{2}) = 1.5
 getsupportlength(::BSpline{3}) = 2.0
 getsupportlength(::BSpline{4}) = 2.5
 
-@pure function nnodes(bspline::BSpline, ::Val{dim})::Int where {dim}
+@pure function getnnodes(bspline::BSpline, ::Val{dim})::Int where {dim}
     (2*getsupportlength(bspline))^dim
 end
 
@@ -206,7 +206,7 @@ function BSplineValues{order, dim, T, L}() where {order, dim, T, L}
 end
 
 function MPValues{dim, T}(F::BSpline{order}) where {order, dim, T}
-    L = nnodes(F, Val(dim))
+    L = getnnodes(F, Val(dim))
     BSplineValues{order, dim, T, L}()
 end
 

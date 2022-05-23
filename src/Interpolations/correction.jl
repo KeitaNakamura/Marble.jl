@@ -30,7 +30,7 @@ function KernelCorrectionValues{K, dim, T, nnodes}() where {K, dim, T, nnodes}
 end
 
 function MPValues{dim, T}(c::KernelCorrection{K}) where {dim, T, K}
-    L = nnodes(K(), Val(dim))
+    L = getnnodes(K(), Val(dim))
     KernelCorrectionValues{K, dim, T, L}()
 end
 

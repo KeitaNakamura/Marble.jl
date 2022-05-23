@@ -46,7 +46,7 @@ end
 
 function MPValues{dim, T}(F::WLS{B, K}) where {B, K, dim, T}
     L = length(value(getbasisfunction(F), zero(Vec{dim, T})))
-    n = nnodes(getkernelfunction(F), Val(dim))
+    n = getnnodes(getkernelfunction(F), Val(dim))
     WLSValues{B, K, dim, T, n, L, L^2}()
 end
 
