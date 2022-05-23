@@ -9,7 +9,6 @@ getsupportlength(c::KernelCorrection, args...) = getsupportlength(getkernelfunct
 struct KernelCorrectionValue{dim, T} <: MPValue
     N::T
     ∇N::Vec{dim, T}
-    I::Index{dim}
     x::Vec{dim, T}
 end
 
@@ -115,5 +114,5 @@ end
 
 @inline function Base.getindex(mpvalues::KernelCorrectionValues, i::Int)
     @_propagate_inbounds_meta
-    KernelCorrectionValue(mpvalues.N[i], mpvalues.∇N[i], mpvalues.gridindices[i], mpvalues.x)
+    KernelCorrectionValue(mpvalues.N[i], mpvalues.∇N[i], mpvalues.x)
 end

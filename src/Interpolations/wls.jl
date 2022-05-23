@@ -16,7 +16,6 @@ struct WLSValue{dim, T, L, L²} <: MPValue
     N::T
     ∇N::Vec{dim, T}
     w::T
-    I::Index{dim}
     M⁻¹::Mat{L, L, T, L²}
     x::Vec{dim, T}
 end
@@ -148,5 +147,5 @@ end
 
 @inline function Base.getindex(mpvalues::WLSValues, i::Int)
     @_propagate_inbounds_meta
-    WLSValue(mpvalues.N[i], mpvalues.∇N[i], mpvalues.w[i], mpvalues.gridindices[i], mpvalues.M⁻¹, mpvalues.x)
+    WLSValue(mpvalues.N[i], mpvalues.∇N[i], mpvalues.w[i], mpvalues.M⁻¹, mpvalues.x)
 end
