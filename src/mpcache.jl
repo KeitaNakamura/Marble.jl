@@ -159,7 +159,7 @@ function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, mps::MPVa
     @simd for i in 1:length(mps)
         I = gridindices(mps, i)
         mp = mps[i]
-        unsafe_add_tuple!(gridstates, I, p2g(mp, I))
+        broadcast_tuple(unsafe_add!, gridstates, I, p2g(mp, I))
     end
 end
 

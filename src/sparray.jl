@@ -68,26 +68,6 @@ end
     x
 end
 
-@generated function unsafe_add_tuple!(xs::Tuple{Vararg{SpArray, N}}, i, v::Tuple{Vararg{Any, N}}) where {N}
-    exps = [:(xs[$i].data[index] += v[$i]) for i in 1:N]
-    quote
-        @_inline_propagate_inbounds_meta
-        spat = xs[1].spat
-        @inbounds begin
-            index = spat.indices[i]
-            $(exps...)
-        end
-        xs
-    end
-end
-
-# this function is also available for mixed use of `SpArray` and `AbstractArray`
-function unsafe_add_tuple!(xs::Tuple{Vararg{AbstractArray, N}}, i, v::Tuple{Vararg{Any, N}}) where {N}
-    @_inline_propagate_inbounds_meta
-    broadcast_tuple(unsafe_add!, xs, i, v)
-    xs
-end
-
 @inline function unsafe_add!(x::SpArray, i, v)
     @boundscheck checkbounds(x, i)
     spat = x.spat
