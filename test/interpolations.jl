@@ -32,8 +32,8 @@ end
                     x = rand(Vec{dim, T})
                     update!(mpvalues, grid, x)
                     @test sum(mpvalues.N) ≈ 1
-                    @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                     @test sum(mpvalues.∇N) ≈ zero(Vec{dim}) atol=TOL
+                    @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                     @test grid_to_point((mp,i) -> grid[i]⊗mp.∇N, mpvalues) ≈ I atol=TOL
                 end
             end
@@ -57,8 +57,8 @@ end
                     if all(a->a[2]<a[1]<1-a[2], zip(x,r))
                         update!(mpvalues, grid, x, r)
                         @test sum(mpvalues.N) ≈ 1
-                        @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                         @test sum(mpvalues.∇N) ≈ zero(Vec{dim}) atol=TOL
+                        @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                         @test grid_to_point((mp,i) -> grid[i]⊗mp.∇N, mpvalues) ≈ I atol=TOL
                     end
                 end
@@ -84,8 +84,8 @@ end
                         update!(mpvalues, grid, x)
                     end
                     @test sum(mpvalues.N) ≈ 1
-                    @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                     @test sum(mpvalues.∇N) ≈ zero(Vec{dim}) atol=TOL
+                    @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                     @test grid_to_point((mp,i) -> grid[i]⊗mp.∇N, mpvalues) ≈ I atol=TOL
                 end
             end
