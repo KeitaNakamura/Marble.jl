@@ -94,7 +94,7 @@ function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, x::Vec{dim}, r::Vec
     dx⁻¹ = gridsteps_inv(grid)
     update_gridindices!(mpvalues, neighboring_nodes(grid, x, getsupportlength(F, r .* dx⁻¹)), spat)
     @inbounds @simd for i in 1:length(mpvalues)
-        I = mpvalues.gridindices[i]
+        I = gridindices(mpvalues, i)
         xᵢ = grid[I]
         mpvalues.∇N[i], mpvalues.N[i] = gradient(x, :all) do x
             @_inline_meta

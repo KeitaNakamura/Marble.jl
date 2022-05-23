@@ -61,7 +61,7 @@ function _update!(mpvalues::WLSValues, F, grid::Grid, x::Vec, spat::AbstractArra
     update_gridindices!(mpvalues, inds, spat)
     dx⁻¹ = gridsteps_inv(grid)
     @inbounds @simd for i in 1:length(mpvalues)
-        I = mpvalues.gridindices[i]
+        I = gridindices(mpvalues, i)
         xᵢ = grid[I]
         ξ = (x - xᵢ) .* dx⁻¹
         w = F(ξ)
@@ -71,7 +71,7 @@ function _update!(mpvalues::WLSValues, F, grid::Grid, x::Vec, spat::AbstractArra
     end
     mpvalues.M⁻¹ = inv(M)
     @inbounds @simd for i in 1:length(mpvalues)
-        I = mpvalues.gridindices[i]
+        I = gridindices(mpvalues, i)
         xᵢ = grid[I]
         q = mpvalues.M⁻¹ ⋅ value(P, xᵢ - x)
         wq = mpvalues.w[i] * q
@@ -95,7 +95,7 @@ function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, F
         D = zero(Vec{dim, T}) # diagonal entries
         wᵢ = values(getkernelfunction(mpvalues), x .* dx⁻¹)
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             w = wᵢ[i]
             D += w * (xᵢ - x) .* (xᵢ - x)
@@ -111,7 +111,7 @@ function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, F
     else
         M = zero(mpvalues.M⁻¹)
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             ξ = (x - xᵢ) .* dx⁻¹
             w = F(ξ)
@@ -121,7 +121,7 @@ function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, F
         end
         M⁻¹ = inv(M)
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             q = M⁻¹ ⋅ value(P, xᵢ - x)
             wq = mpvalues.w[i] * q

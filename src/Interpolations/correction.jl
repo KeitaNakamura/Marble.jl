@@ -48,7 +48,7 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
     if iscompleted
         wᵢ, ∇wᵢ = values_gradients(F, x .* dx⁻¹, args...)
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             mpvalues.N[i] = wᵢ[i]
             mpvalues.∇N[i] = ∇wᵢ[i] .* dx⁻¹
@@ -59,7 +59,7 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
         A′ = zero(Mat{dim, dim, T})
         β′ = zero(Vec{dim, T})
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             ξ = (x - xᵢ) .* dx⁻¹
             ∇w, w = gradient(ξ -> value(F, ξ, args...), ξ, :all)
@@ -78,7 +78,7 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
         α = zero(T)
         α′ = zero(Mat{dim, dim, T})
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             w = mpvalues.N[i]
             ∇w = mpvalues.∇N[i]
@@ -88,7 +88,7 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
         α = inv(α)
         α′ = inv(α′)
         @inbounds @simd for i in 1:length(mpvalues)
-            I = mpvalues.gridindices[i]
+            I = gridindices(mpvalues, i)
             xᵢ = grid[I]
             w = mpvalues.N[i]
             ∇w = mpvalues.∇N[i]

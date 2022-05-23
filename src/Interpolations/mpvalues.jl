@@ -4,6 +4,8 @@ abstract type MPValue end
 abstract type MPValues{dim, T, V <: MPValue} <: AbstractVector{V} end
 
 Base.size(x::MPValues) = (x.len,)
+gridindices(x::MPValues) = x.gridindices
+gridindices(x::MPValues, i::Int) = (@_propagate_inbounds_meta; x.gridindices[i])
 
 """
     MPValues{dim}(::Interpolation)
