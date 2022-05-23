@@ -57,7 +57,7 @@ function _update!(mpvalues::WLSValues, F, grid::Grid, x::Vec, spat::AbstractArra
     P = getbasisfunction(mpvalues)
     M = zero(mpvalues.M⁻¹)
     mpvalues.x = x
-    update_gridindices!(mpvalues, inds, spat)
+    update_active_gridindices!(mpvalues, inds, spat)
     dx⁻¹ = gridsteps_inv(grid)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
@@ -88,8 +88,8 @@ function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, F
     mpvalues.x = x
 
     dx⁻¹ = gridsteps_inv(grid)
-    iscompleted = update_gridindices!(mpvalues, inds, spat)
-    if iscompleted
+    allactive = update_active_gridindices!(mpvalues, inds, spat)
+    if allactive
         # fast version
         D = zero(Vec{dim, T}) # diagonal entries
         wᵢ = values(getkernelfunction(mpvalues), x .* dx⁻¹)

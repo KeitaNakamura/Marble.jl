@@ -33,7 +33,7 @@ MPValues{dim}(F::Interpolation) where {dim} = MPValues{dim, Float64}(F)
 update!(mpvalues::MPValues, grid::Grid, x::Vec) = update!(mpvalues, grid, x, trues(size(grid)))
 update!(mpvalues::MPValues, grid::Grid, x::Vec, r::Vec) = update!(mpvalues, grid, x, r, trues(size(grid)))
 
-function update_gridindices!(mpvalues::MPValues, gridindices::CartesianIndices{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+function update_active_gridindices!(mpvalues::MPValues, gridindices::CartesianIndices{dim}, spat::AbstractArray{Bool, dim}) where {dim}
     count = 0
     @inbounds for I in gridindices
         i = LinearIndices(spat)[I]
@@ -43,5 +43,6 @@ function update_gridindices!(mpvalues::MPValues, gridindices::CartesianIndices{d
         end
     end
     mpvalues.len = count
-    count == length(gridindices) == length(mpvalues.N)
+    allactive = count == length(gridindices) == length(mpvalues.N)
+    allactive
 end

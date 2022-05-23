@@ -43,8 +43,8 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
     mpvalues.x = x
 
     dx⁻¹ = gridsteps_inv(grid)
-    iscompleted = update_gridindices!(mpvalues, inds, spat)
-    if iscompleted
+    allactive = update_active_gridindices!(mpvalues, inds, spat)
+    if allactive
         wᵢ, ∇wᵢ = values_gradients(F, x .* dx⁻¹, args...)
         @inbounds @simd for i in 1:length(mpvalues)
             I = gridindices(mpvalues, i)
