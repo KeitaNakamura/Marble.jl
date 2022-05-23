@@ -154,22 +154,23 @@ end
 # point_to_grid! #
 ##################
 
-function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, mps::MPValues)
+checksize(xs, dims) = @assert all(broadcast_tuple(x -> size(x) == dims, xs))
+
+function point_to_grid!(p2g, gridstates, mps::MPValues)
     @_inline_propagate_inbounds_meta
     @simd for i in 1:length(mps)
         I = gridindices(mps, i)
-        mp = mps[i]
-        broadcast_tuple(unsafe_add!, gridstates, I, p2g(mp, I))
+        broadcast_tuple(unsafe_add!, gridstates, I, p2g(mps[i], I))
     end
 end
 
-function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, cache::MPCache)
-    @assert all(==(gridsize(cache)), size.(gridstates))
-    map(fillzero!, gridstates)
+function point_to_grid!(p2g, gridstates, cache::MPCache; zeroinit::Bool = true)
+    checksize(gridstates, gridsize(cache))
+    zeroinit && broadcast_tuple(fillzero!, gridstates)
     eachpoint_blockwise_parallel(cache) do p
         @_inline_propagate_inbounds_meta
         point_to_grid!(
-            (mp, I) -> (@_inline_meta; @inbounds p2g(mp, p, I)),
+            (mp, I) -> (@_inline_propagate_inbounds_meta; p2g(mp, p, I)),
             gridstates,
             cache.mpvalues[p],
         )
@@ -177,78 +178,59 @@ function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, cache::MP
     gridstates
 end
 
-function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, cache::MPCache, pointmask::AbstractVector{Bool})
-    @assert all(==(gridsize(cache)), size.(gridstates))
+function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, cache::MPCache, pointmask::AbstractVector{Bool}; zeroinit::Bool = true)
+    checksize(gridstates, gridsize(cache))
     @assert length(pointmask) == npoints(cache)
-    map(fillzero!, gridstates)
+    zeroinit && broadcast_tuple(fillzero!, gridstates)
     eachpoint_blockwise_parallel(cache) do p
         @_inline_propagate_inbounds_meta
         pointmask[p] && point_to_grid!(
-            (mp, I) -> (@_inline_meta; @inbounds p2g(mp, p, I)),
+            (mp, I) -> (@_inline_propagate_inbounds_meta; p2g(mp, p, I)),
             gridstates,
             cache.mpvalues[p],
         )
     end
     gridstates
-end
-
-function point_to_grid!(p2g, gridstate::AbstractArray, cache::MPCache, args...)
-    point_to_grid!((gridstate,), cache, args...) do mp, p, I
-        @_inline_propagate_inbounds_meta
-        (p2g(mp, p, I),)
-    end
 end
 
 ##################
 # grid_to_point! #
 ##################
 
-@inline g2p_return_type(g2p, mps::MPValues{dim}) where {dim} = Base._return_type(g2p, Tuple{eltype(mps), Index{dim}})
 function grid_to_point(g2p, mps::MPValues)
     @_inline_propagate_inbounds_meta
-    T = g2p_return_type(g2p, mps)
-    vals = zero_recursive(T)
-    @simd for i in 1:length(mps)
+    vals = g2p(first(mps), gridindices(mps, 1))
+    @simd for i in 2:length(mps)
         I = gridindices(mps, i)
-        mp = mps[i]
-        res = g2p(mp, I)
-        vals = broadcast_tuple(+, vals, res)
+        vals = broadcast_tuple(+, vals, g2p(mps[i], I))
     end
     vals
 end
 
 function grid_to_point(g2p, cache::MPCache)
-    @_inline_propagate_inbounds_meta
     LazyDotArray(1:npoints(cache)) do p
         @_inline_propagate_inbounds_meta
         grid_to_point(
-            (mp, I) -> (@_inline_meta; @inbounds g2p(mp, I, p)),
+            (mp, I) -> (@_inline_propagate_inbounds_meta; g2p(mp, I, p)),
             cache.mpvalues[p]
         )
     end
 end
 
-function grid_to_point!(g2p, pointstates::Tuple{Vararg{AbstractVector}}, cache::MPCache)
-    @assert all(==(npoints(cache)), length.(pointstates))
+function grid_to_point!(g2p, pointstates, cache::MPCache)
+    checksize(pointstates, (npoints(cache),))
     results = grid_to_point(g2p, cache)
     Threads.@threads for p in 1:npoints(cache)
         @inbounds broadcast_tuple(setindex!, pointstates, results[p], p)
     end
 end
 
-function grid_to_point!(g2p, pointstates::Tuple{Vararg{AbstractVector}}, cache::MPCache, pointmask::AbstractVector{Bool})
-    @assert all(==(npoints(cache)), length.(pointstates))
+function grid_to_point!(g2p, pointstates, cache::MPCache, pointmask::AbstractVector{Bool})
+    checksize(pointstates, (npoints(cache),))
     @assert length(pointmask) == npoints(cache)
     results = grid_to_point(g2p, cache)
     Threads.@threads for p in 1:npoints(cache)
         @inbounds pointmask[p] && broadcast_tuple(setindex!, pointstates, results[p], p)
-    end
-end
-
-function grid_to_point!(g2p, pointstate::AbstractVector, cache::MPCache, args...)
-    grid_to_point!((pointstate,), cache, args...) do mp, I, p
-        @_inline_propagate_inbounds_meta
-        (g2p(mp, I, p),)
     end
 end
 
