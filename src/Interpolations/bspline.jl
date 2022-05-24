@@ -34,70 +34,6 @@ getsupportlength(::BSpline{4}) = 2.5
     (2*getsupportlength(bspline))^dim
 end
 
-
-fract(x) = x - floor(x)
-
-# Fast calculations for values
-# `x` must be normalized by `dx`
-function Base.values(::BSpline{1}, x::T) where {T <: Real}
-    ξ = fract(x)
-    Vec{2, T}(1-ξ, ξ)
-end
-function Base.values(::BSpline{2}, x::T) where {T <: Real}
-    V = Vec{3, T}
-    x′ = fract(x - T(0.5))
-    ξ = x′ .- V(-0.5, 0.5, 1.5)
-    @. $V(0.5,-1.0,0.5)*ξ^2 + $V(-1.5,0.0,1.5)*ξ + $V(1.125, 0.75, 1.125)
-end
-function Base.values(::BSpline{3}, x::T) where {T <: Real}
-    V = Vec{4, T}
-    x′ = fract(x)
-    ξ = x′ .- V(-1, 0, 1, 2)
-    ξ² = ξ .* ξ
-    ξ³ = ξ² .* ξ
-    @. $V(-1/6,0.5,-0.5,1/6)*ξ³ + $V(1,-1,-1,1)*ξ² + $V(-2,0,0,2)*ξ + $V(4/3,2/3,2/3,4/3)
-end
-@inline Base.values(bspline::BSpline, x::Vec) = Tuple(otimes(maptuple(values, bspline, Tuple(x))...))
-
-# Fast calculations for values and gradients
-# `x` must be normalized by `dx`
-function values_gradients(::BSpline{1}, x::T) where {T <: Real}
-    V = Vec{2, T}
-    ξ = fract(x)
-    V(1-ξ, ξ), V(-1, 1)
-end
-function values_gradients(::BSpline{2}, x::T) where {T <: Real}
-    V = Vec{3, T}
-    x′ = fract(x - T(0.5))
-    ξ = x′ .- V(-0.5, 0.5, 1.5)
-    vals = @. $V(0.5,-1.0,0.5)*ξ^2 + $V(-1.5,0.0,1.5)*ξ + $V(1.125,0.75,1.125)
-    grads = @. $V(1.0,-2.0,1.0)*ξ + $V(-1.5,0.0,1.5)
-    vals, grads
-end
-function values_gradients(::BSpline{3}, x::T) where {T <: Real}
-    V = Vec{4, T}
-    x′ = fract(x)
-    ξ = x′ .- V(-1, 0, 1, 2)
-    ξ² = ξ .* ξ
-    ξ³ = ξ² .* ξ
-    vals = @. $V(-1/6,0.5,-0.5,1/6)*ξ³ + $V(1,-1,-1,1)*ξ² + $V(-2,0,0,2)*ξ + $V(4/3,2/3,2/3,4/3)
-    grads = @. $V(-0.5,1.5,-1.5,0.5)*ξ² + $V(2,-2,-2,2)*ξ + $V(-2,0,0,2)
-    vals, grads
-end
-@generated function values_gradients(bspline::BSpline, x::Vec{dim}) where {dim}
-    exps = map(1:dim) do i
-        x = [d == i ? :(grads[$d]) : :(vals[$d]) for d in 1:dim]
-        :(Tuple(otimes($(x...))))
-    end
-    quote
-        @_inline_meta
-        vals_grads = maptuple(values_gradients, bspline, Tuple(x))
-        vals  = maptuple(getindex, vals_grads, 1)
-        grads = maptuple(getindex, vals_grads, 2)
-        Tuple(otimes(vals...)), maptuple(Vec, $(exps...))
-    end
-end
-
 # simple B-spline calculations
 function value(::BSpline{1}, ξ::Real)
     ξ = abs(ξ)
@@ -120,6 +56,21 @@ function value(::BSpline{4}, ξ::Real)
     ξ < 2.5 ? (5 - 2ξ)^4 / 384 : zero(ξ)
 end
 @inline value(bspline::BSpline, ξ::Vec) = prod(maptuple(value, bspline, Tuple(ξ)))
+function value(bspline::BSpline, grid::Grid, I::Index, xp::Vec) # used in `WLS`
+    @_inline_propagate_inbounds_meta
+    xi = grid[I]
+    dx⁻¹ = gridsteps_inv(grid)
+    ξ = (xp - xi) .* dx⁻¹
+    value(bspline, ξ)
+end
+function value_gradient(bspline::BSpline, grid::Grid, I::Index, xp::Vec) # used in `KernelCorrection`
+    @_inline_propagate_inbounds_meta
+    xi = grid[I]
+    dx⁻¹ = gridsteps_inv(grid)
+    ξ = (xp - xi) .* dx⁻¹
+    ∇w, w = gradient(ξ -> value(bspline, ξ), ξ, :all)
+    w, ∇w.*dx⁻¹
+end
 
 # Steffen, M., Kirby, R. M., & Berzins, M. (2008).
 # Analysis and reduction of quadrature errors in the material point method (MPM).
@@ -158,6 +109,88 @@ function value(spline::BSpline{3}, ξ::Real, pos::Int)::typeof(ξ)
     end
 end
 @inline value(bspline::BSpline, ξ::Vec, pos::Tuple{Vararg{Int}}) = prod(maptuple(value, bspline, Tuple(ξ), pos))
+function value_gradient(bspline::BSpline, grid::Grid, I::Index, xp::Vec, ::Symbol) # last argument is pseudo argument `:open_knot`
+    @_inline_propagate_inbounds_meta
+    xi = grid[I]
+    dx⁻¹ = gridsteps_inv(grid)
+    ξ = (xp - xi) .* dx⁻¹
+    ∇w, w = gradient(ξ -> value(bspline, ξ, node_position(grid, I)), ξ, :all)
+    w, ∇w.*dx⁻¹
+end
+
+
+fract(x) = x - floor(x)
+# Fast calculations for values
+# used in `WLS`
+# `x` must be normalized by `dx`
+function Base.values(::BSpline{1}, x::T) where {T <: Real}
+    ξ = fract(x)
+    Vec{2, T}(1-ξ, ξ)
+end
+function Base.values(::BSpline{2}, x::T) where {T <: Real}
+    V = Vec{3, T}
+    x′ = fract(x - T(0.5))
+    ξ = x′ .- V(-0.5, 0.5, 1.5)
+    @. $V(0.5,-1.0,0.5)*ξ^2 + $V(-1.5,0.0,1.5)*ξ + $V(1.125, 0.75, 1.125)
+end
+function Base.values(::BSpline{3}, x::T) where {T <: Real}
+    V = Vec{4, T}
+    x′ = fract(x)
+    ξ = x′ .- V(-1, 0, 1, 2)
+    ξ² = ξ .* ξ
+    ξ³ = ξ² .* ξ
+    @. $V(-1/6,0.5,-0.5,1/6)*ξ³ + $V(1,-1,-1,1)*ξ² + $V(-2,0,0,2)*ξ + $V(4/3,2/3,2/3,4/3)
+end
+@inline Base.values(bspline::BSpline, x::Vec) = Tuple(otimes(maptuple(values, bspline, Tuple(x))...))
+function Base.values(bspline::BSpline, grid::Grid, xp::Vec)
+    dx⁻¹ = gridsteps_inv(grid)
+    values(bspline, xp .* dx⁻¹)
+end
+
+# Fast calculations for values and gradients
+# used in `KernelCorrection`
+# `x` must be normalized by `dx`
+function values_gradients(::BSpline{1}, x::T) where {T <: Real}
+    V = Vec{2, T}
+    ξ = fract(x)
+    V(1-ξ, ξ), V(-1, 1)
+end
+function values_gradients(::BSpline{2}, x::T) where {T <: Real}
+    V = Vec{3, T}
+    x′ = fract(x - T(0.5))
+    ξ = x′ .- V(-0.5, 0.5, 1.5)
+    vals = @. $V(0.5,-1.0,0.5)*ξ^2 + $V(-1.5,0.0,1.5)*ξ + $V(1.125,0.75,1.125)
+    grads = @. $V(1.0,-2.0,1.0)*ξ + $V(-1.5,0.0,1.5)
+    vals, grads
+end
+function values_gradients(::BSpline{3}, x::T) where {T <: Real}
+    V = Vec{4, T}
+    x′ = fract(x)
+    ξ = x′ .- V(-1, 0, 1, 2)
+    ξ² = ξ .* ξ
+    ξ³ = ξ² .* ξ
+    vals = @. $V(-1/6,0.5,-0.5,1/6)*ξ³ + $V(1,-1,-1,1)*ξ² + $V(-2,0,0,2)*ξ + $V(4/3,2/3,2/3,4/3)
+    grads = @. $V(-0.5,1.5,-1.5,0.5)*ξ² + $V(2,-2,-2,2)*ξ + $V(-2,0,0,2)
+    vals, grads
+end
+@generated function values_gradients(bspline::BSpline, x::Vec{dim}) where {dim}
+    exps = map(1:dim) do i
+        x = [d == i ? :(grads[$d]) : :(vals[$d]) for d in 1:dim]
+        :(Tuple(otimes($(x...))))
+    end
+    quote
+        @_inline_meta
+        vals_grads = maptuple(values_gradients, bspline, Tuple(x))
+        vals  = maptuple(getindex, vals_grads, 1)
+        grads = maptuple(getindex, vals_grads, 2)
+        Tuple(otimes(vals...)), maptuple(Vec, $(exps...))
+    end
+end
+function values_gradients(bspline::BSpline, grid::Grid, xp::Vec)
+    dx⁻¹ = gridsteps_inv(grid)
+    wᵢ, ∇wᵢ = values_gradients(bspline, xp .* dx⁻¹)
+    wᵢ, broadcast(.*, ∇wᵢ, Ref(dx⁻¹))
+end
 
 
 struct BSplineValue{dim, T} <: MPValue
@@ -196,16 +229,10 @@ function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, xp::Vec{
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
     mpvalues.xp = xp
-    dx⁻¹ = gridsteps_inv(grid)
     update_active_gridindices!(mpvalues, neighboring_nodes(grid, xp, getsupportlength(F)), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
-        xi = grid[I]
-        mpvalues.∇N[i], mpvalues.N[i] = gradient(xp, :all) do xp
-            @_inline_meta
-            ξ = (xp - xi) .* dx⁻¹
-            value(F, ξ, node_position(grid, I))
-        end
+        mpvalues.N[i], mpvalues.∇N[i] = value_gradient(F, grid, I, xp, :open_knot)
     end
     mpvalues
 end
