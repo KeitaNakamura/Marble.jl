@@ -37,19 +37,18 @@ end
 
 fract(x) = x - floor(x)
 
+# Fast calculations for values
 # `x` must be normalized by `dx`
 function Base.values(::BSpline{1}, x::T) where {T <: Real}
     ξ = fract(x)
     Vec{2, T}(1-ξ, ξ)
 end
-
 function Base.values(::BSpline{2}, x::T) where {T <: Real}
     V = Vec{3, T}
     x′ = fract(x - T(0.5))
     ξ = x′ .- V(-0.5, 0.5, 1.5)
     @. $V(0.5,-1.0,0.5)*ξ^2 + $V(-1.5,0.0,1.5)*ξ + $V(1.125, 0.75, 1.125)
 end
-
 function Base.values(::BSpline{3}, x::T) where {T <: Real}
     V = Vec{4, T}
     x′ = fract(x)
@@ -58,22 +57,15 @@ function Base.values(::BSpline{3}, x::T) where {T <: Real}
     ξ³ = ξ² .* ξ
     @. $V(-1/6,0.5,-0.5,1/6)*ξ³ + $V(1,-1,-1,1)*ξ² + $V(-2,0,0,2)*ξ + $V(4/3,2/3,2/3,4/3)
 end
+@inline Base.values(bspline::BSpline, x::Vec) = Tuple(otimes(broadcast_tuple(values, bspline, Tuple(x))...))
 
-@generated function Base.values(bspline::BSpline, x::Vec{dim}) where {dim}
-    exps = [:(values(bspline, x[$i])) for i in 1:dim]
-    quote
-        @_inline_meta
-        Tuple(otimes($(exps...)))
-    end
-end
-
+# Fast calculations for values and gradients
 # `x` must be normalized by `dx`
 function values_gradients(::BSpline{1}, x::T) where {T <: Real}
     V = Vec{2, T}
     ξ = fract(x)
     V(1-ξ, ξ), V(-1, 1)
 end
-
 function values_gradients(::BSpline{2}, x::T) where {T <: Real}
     V = Vec{3, T}
     x′ = fract(x - T(0.5))
@@ -82,7 +74,6 @@ function values_gradients(::BSpline{2}, x::T) where {T <: Real}
     grads = @. $V(1.0,-2.0,1.0)*ξ + $V(-1.5,0.0,1.5)
     vals, grads
 end
-
 function values_gradients(::BSpline{3}, x::T) where {T <: Real}
     V = Vec{4, T}
     x′ = fract(x)
@@ -93,58 +84,49 @@ function values_gradients(::BSpline{3}, x::T) where {T <: Real}
     grads = @. $V(-0.5,1.5,-1.5,0.5)*ξ² + $V(2,-2,-2,2)*ξ + $V(-2,0,0,2)
     vals, grads
 end
-
 @generated function values_gradients(bspline::BSpline, x::Vec{dim}) where {dim}
-    exps = [:(values_gradients(bspline, x[$i])) for i in 1:dim]
-    derivs = map(1:dim) do i
+    exps = map(1:dim) do i
         x = [d == i ? :(grads[$d]) : :(vals[$d]) for d in 1:dim]
         :(Tuple(otimes($(x...))))
     end
     quote
         @_inline_meta
-        vals_grads = tuple($(exps...))
-        vals = getindex.(vals_grads, 1)
-        grads = getindex.(vals_grads, 2)
-        Tuple(otimes(vals...)), Vec{dim}.($(derivs...))
+        vals_grads = broadcast_tuple(values_gradients, bspline, Tuple(x))
+        vals  = broadcast_tuple(getindex, vals_grads, 1)
+        grads = broadcast_tuple(getindex, vals_grads, 2)
+        Tuple(otimes(vals...)), broadcast_tuple(Vec, $(exps...))
     end
 end
 
+# simple B-spline calculations
 function value(::BSpline{1}, ξ::Real)
     ξ = abs(ξ)
     ξ < 1 ? 1 - ξ : zero(ξ)
 end
-
 function value(::BSpline{2}, ξ::Real)
     ξ = abs(ξ)
     ξ < 0.5 ? (3 - 4ξ^2) / 4 :
     ξ < 1.5 ? (3 - 2ξ)^2 / 8 : zero(ξ)
 end
-
 function value(::BSpline{3}, ξ::Real)
     ξ = abs(ξ)
     ξ < 1 ? (3ξ^3 - 6ξ^2 + 4) / 6 :
     ξ < 2 ? (2 - ξ)^3 / 6         : zero(ξ)
 end
-
 function value(::BSpline{4}, ξ::Real)
     ξ = abs(ξ)
     ξ < 0.5 ? (48ξ^4 - 120ξ^2 + 115) / 192 :
     ξ < 1.5 ? -(16ξ^4 - 80ξ^3 + 120ξ^2 - 20ξ - 55) / 96 :
     ξ < 2.5 ? (5 - 2ξ)^4 / 384 : zero(ξ)
 end
+@inline value(bspline::BSpline, ξ::Vec) = prod(broadcast_tuple(value, bspline, Tuple(ξ)))
 
-@generated function value(bspline::BSpline, ξ::Vec{dim}) where {dim}
-    exps = [:(value(bspline, ξ[$i])) for i in 1:dim]
-    quote
-        @_inline_meta
-        *($(exps...))
-    end
-end
-
+# Steffen, M., Kirby, R. M., & Berzins, M. (2008).
+# Analysis and reduction of quadrature errors in the material point method (MPM).
+# International journal for numerical methods in engineering, 76(6), 922-948.
 function value(spline::BSpline{1}, ξ::Real, pos::Int)::typeof(ξ)
     value(spline, ξ)
 end
-
 function value(spline::BSpline{2}, ξ::Real, pos::Int)::typeof(ξ)
     if pos == 0
         ξ = abs(ξ)
@@ -160,7 +142,6 @@ function value(spline::BSpline{2}, ξ::Real, pos::Int)::typeof(ξ)
         value(spline, ξ)
     end
 end
-
 function value(spline::BSpline{3}, ξ::Real, pos::Int)::typeof(ξ)
     if pos == 0
         ξ = abs(ξ)
@@ -176,10 +157,7 @@ function value(spline::BSpline{3}, ξ::Real, pos::Int)::typeof(ξ)
         value(spline, ξ)
     end
 end
-
-@inline function value(bspline::BSpline, ξ::Vec{dim}, pos::NTuple{dim, Int}) where {dim}
-    prod(value.(Ref(bspline), ξ, pos))
-end
+@inline value(bspline::BSpline, ξ::Vec, pos::Tuple{Vararg{Int}}) = prod(broadcast_tuple(value, bspline, Tuple(ξ), pos))
 
 
 struct BSplineValue{dim, T} <: MPValue
@@ -210,7 +188,7 @@ function MPValues{dim, T}(F::BSpline{order}) where {order, dim, T}
     BSplineValues{order, dim, T, L}()
 end
 
-node_position(ax::Vector, i::Int) = ifelse(i < length(ax)/2, i-1, -(length(ax)-i))
+node_position(ax::Vector, i::Int) = i - ifelse(2i<length(ax), firstindex(ax), lastindex(ax))
 node_position(grid::Grid{dim}, index::Index{dim}) where {dim} = map(node_position, gridaxes(grid), Tuple(index.I))
 
 function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
