@@ -16,6 +16,21 @@ function value(::GIMP, ξ::Real, l::Real) # `l` is normalized radius
     ξ < 1+l ? (1+l-ξ)^2 / 4l       : zero(ξ)
 end
 @inline value(f::GIMP, ξ::Vec, l::Vec) = prod(maptuple(value, f, Tuple(ξ), Tuple(l)))
+function value(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec) # used in `WLS`
+    @_inline_propagate_inbounds_meta
+    xi = grid[I]
+    dx⁻¹ = gridsteps_inv(grid)
+    ξ = (xp - xi) .* dx⁻¹
+    value(f, ξ, rp.*dx⁻¹)
+end
+function value_gradient(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec) # used in `KernelCorrection`
+    @_inline_propagate_inbounds_meta
+    xi = grid[I]
+    dx⁻¹ = gridsteps_inv(grid)
+    ξ = (xp - xi) .* dx⁻¹
+    ∇w, w = gradient(ξ -> value(f, ξ, rp.*dx⁻¹), ξ, :all)
+    w, ∇w.*dx⁻¹
+end
 
 # used in `WLS`
 # `x` and `l` must be normalized by `dx`
@@ -24,6 +39,11 @@ end
     x′ = fract(x - T(0.5))
     ξ = x′ .- V(-0.5, 0.5, 1.5)
     maptuple(value, GIMP(), Tuple(ξ), Tuple(l))
+end
+@inline Base.values(f::GIMP, x::Vec, l::Vec) = Tuple(otimes(maptuple(values, f, Tuple(x), Tuple(l))...))
+function Base.values(f::GIMP, grid::Grid, xp::Vec, lp::Vec)
+    dx⁻¹ = gridsteps_inv(grid)
+    values(f, xp.*dx⁻¹, lp.*dx⁻¹)
 end
 
 # used in `KernelCorrection`
@@ -50,6 +70,11 @@ end
         grads = maptuple(getindex, vals_grads, 2)
         Tuple(otimes(vals...)), maptuple(Vec, $(exps...))
     end
+end
+function values_gradients(f::GIMP, grid::Grid, xp::Vec, lp::Vec)
+    dx⁻¹ = gridsteps_inv(grid)
+    wᵢ, ∇wᵢ = values_gradients(f, xp.*dx⁻¹, lp.*dx⁻¹)
+    wᵢ, broadcast(.*, ∇wᵢ, Ref(dx⁻¹))
 end
 
 
@@ -90,12 +115,7 @@ function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, xp::Vec{dim}, r::Ve
     update_active_gridindices!(mpvalues, neighboring_nodes(grid, xp, getsupportlength(F, r .* dx⁻¹)), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
-        xi = grid[I]
-        mpvalues.∇N[i], mpvalues.N[i] = gradient(xp, :all) do xp
-            @_inline_meta
-            ξ = (xp - xi) .* dx⁻¹
-            value(F, ξ, r .* dx⁻¹)
-        end
+        mpvalues.N[i], mpvalues.∇N[i] = value_gradient(F, grid, I, xp, r)
     end
     mpvalues
 end
