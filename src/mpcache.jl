@@ -91,11 +91,6 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, 
             end
         end
     end
-    @inbounds Threads.@threads for i in eachindex(spat)
-        if isinbound(grid, i) # using linear index is ok for `isinbound`
-            spat[i] = false
-        end
-    end
     spat
 end
 

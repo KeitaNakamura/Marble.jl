@@ -56,15 +56,12 @@ function sandcolumn(
 
         transfer.point_to_grid!(grid, pointstate, cache, dt)
 
-        @inbounds for bound in eachboundary(grid)
-            v = grid.state.v[bound.I]
-            n = bound.n
-            if n == Vec(0, 1) # bottom
-                v += contacted(ContactMohrCoulomb(μ = 0.2), v, n)
-            else
-                v += contacted(ContactMohrCoulomb(μ = 0), v, n)
-            end
-            grid.state.v[bound.I] = v
+        # boundary conditions
+        @inbounds for (I,n) in boundaries(grid, "-y") # bottom
+            grid.state.v[I] += contacted(ContactMohrCoulomb(μ = 0.2), grid.state.v[I], n)
+        end
+        @inbounds for (I,n) in boundaries(grid, "-x", "+x") # left and right
+            grid.state.v[I] += contacted(ContactMohrCoulomb(μ = 0), grid.state.v[I], n)
         end
 
         transfer.grid_to_point!(pointstate, grid, cache, dt)

@@ -141,17 +141,17 @@ end
     end
 end
 
-function value(spline::BSpline{1}, ξ::Real, pos::NodePosition)::typeof(ξ)
+function value(spline::BSpline{1}, ξ::Real, pos::Int)::typeof(ξ)
     value(spline, ξ)
 end
 
-function value(spline::BSpline{2}, ξ::Real, pos::NodePosition)::typeof(ξ)
-    if nthfrombound(pos) == 0
+function value(spline::BSpline{2}, ξ::Real, pos::Int)::typeof(ξ)
+    if pos == 0
         ξ = abs(ξ)
         ξ < 0.5 ? (3 - 4ξ^2) / 3 :
         ξ < 1.5 ? (3 - 2ξ)^2 / 6 : zero(ξ)
-    elseif nthfrombound(pos) == 1
-        ξ = dirfrombound(pos) * ξ
+    elseif abs(pos) == 1
+        ξ = sign(pos) * ξ
         ξ < -1   ? zero(ξ)                 :
         ξ < -0.5 ? 4(1 + ξ)^2 / 3          :
         ξ <  0.5 ? -(28ξ^2 - 4ξ - 17) / 24 :
@@ -161,13 +161,13 @@ function value(spline::BSpline{2}, ξ::Real, pos::NodePosition)::typeof(ξ)
     end
 end
 
-function value(spline::BSpline{3}, ξ::Real, pos::NodePosition)::typeof(ξ)
-    if nthfrombound(pos) == 0
+function value(spline::BSpline{3}, ξ::Real, pos::Int)::typeof(ξ)
+    if pos == 0
         ξ = abs(ξ)
         ξ < 1 ? (3ξ^3 - 6ξ^2 + 4) / 4 :
         ξ < 2 ? (2 - ξ)^3 / 4         : zero(ξ)
-    elseif nthfrombound(pos) == 1
-        ξ = dirfrombound(pos) * ξ
+    elseif abs(pos) == 1
+        ξ = sign(pos) * ξ
         ξ < -1 ? zero(ξ)                      :
         ξ <  0 ? (1 + ξ)^2 * (7 - 11ξ) / 12   :
         ξ <  1 ? (7ξ^3 - 15ξ^2 + 3ξ + 7) / 12 :
@@ -177,7 +177,7 @@ function value(spline::BSpline{3}, ξ::Real, pos::NodePosition)::typeof(ξ)
     end
 end
 
-@inline function value(bspline::BSpline, ξ::Vec{dim}, pos::NTuple{dim, NodePosition}) where {dim}
+@inline function value(bspline::BSpline, ξ::Vec{dim}, pos::NTuple{dim, Int}) where {dim}
     prod(value.(Ref(bspline), ξ, pos))
 end
 
@@ -209,6 +209,9 @@ function MPValues{dim, T}(F::BSpline{order}) where {order, dim, T}
     L = getnnodes(F, Val(dim))
     BSplineValues{order, dim, T, L}()
 end
+
+node_position(ax::Vector, i::Int) = ifelse(i < length(ax)/2, i-1, -(length(ax)-i))
+node_position(grid::Grid{dim}, index::Index{dim}) where {dim} = map(node_position, gridaxes(grid), Tuple(index.I))
 
 function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
     F = mpvalues.F

@@ -64,7 +64,7 @@ end
     ν = 0.3
     handle_volumetric_locking = true
     check_example("stripfooting", 1, LinearBSpline(); dx, ν, handle_volumetric_locking)
-    check_example("stripfooting", 2, GIMP(); dx, ν, handle_volumetric_locking)
+    check_example("stripfooting", 2, GIMP(); dx, ν, handle_volumetric_locking, CFL = 0.5)
     check_example("stripfooting", 3, LinearWLS(QuadraticBSpline()); dx, ν, handle_volumetric_locking)
     check_example("stripfooting", 4, KernelCorrection(QuadraticBSpline()); dx, ν, handle_volumetric_locking)
     check_example("stripfooting", 5, KernelCorrection(QuadraticBSpline()); dx, ν, handle_volumetric_locking, transfer = TransferAffinePIC())

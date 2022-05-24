@@ -1,119 +1,3 @@
-struct NodePosition
-    nth::Int
-    dir::Int # 1 or -1
-end
-nthfrombound(pos::NodePosition) = pos.nth
-dirfrombound(pos::NodePosition) = pos.dir
-
-struct BoundaryCondition{dim}
-    boundcontours::NTuple{dim, Array{Int, dim}}
-    node_positions::NTuple{dim, Array{NodePosition, dim}}
-end
-
-node_position(bc::BoundaryCondition, I, d) = (@_propagate_inbounds_meta; bc.node_positions[d][I])
-node_position(bc::BoundaryCondition{dim}, I) where {dim} = (@_propagate_inbounds_meta; ntuple(d -> node_position(bc, I, d), Val(dim)))
-
-@inline function isonbound(bc::BoundaryCondition, I, d::Int)
-    @_propagate_inbounds_meta
-    pos = node_position(bc, I, d)
-    pos.nth === 0 && pos.dir !== 0
-end
-@inline function isonbound(bc::BoundaryCondition{dim}, I) where {dim}
-    @_propagate_inbounds_meta
-    |(ntuple(d -> isonbound(bc, I, d), Val(dim))...)
-end
-
-@inline function isinbound(bc::BoundaryCondition, I, d::Int)
-    @_propagate_inbounds_meta
-    pos = node_position(bc, I, d)
-    pos.nth === 0 && pos.dir === 0
-end
-@inline function isinbound(bc::BoundaryCondition{dim}, I) where {dim}
-    @_propagate_inbounds_meta
-    prod(ntuple(d -> isinbound(bc, I, d), Val(dim)))
-end
-
-function set_boundcontour!(boundcontour::AbstractVector{Int}, start::Int, dir::Int)
-    @boundscheck checkbounds(boundcontour, start)
-    @assert dir == 1 || dir == -1
-    nth = 0
-    for i in start:dir:ifelse(dir==1, lastindex(boundcontour), firstindex(boundcontour))
-        if nth < boundcontour[i]
-            boundcontour[i] = nth
-        end
-        nth += 1
-    end
-    boundcontour
-end
-
-function set_boundcontour!(boundcontour::AbstractVector{Int}, withinbounds::AbstractVector{Bool})
-    @assert size(boundcontour) == size(withinbounds)
-    set_boundcontour!(boundcontour, firstindex(boundcontour), 1)
-    set_boundcontour!(boundcontour, lastindex(boundcontour), -1)
-    for i in eachindex(withinbounds)
-        if withinbounds[i] == true
-            set_boundcontour!(boundcontour, i,  1)
-            set_boundcontour!(boundcontour, i, -1)
-        end
-    end
-    boundcontour
-end
-
-function eachaxis(x::AbstractArray{<: Any, dim}, d::Int) where {dim}
-    @assert d ≤ ndims(x)
-    _colon(x) = x:x
-    _eachindex(x, i) = 1:size(x, i)
-    axisindices(x, I) = ntuple(i -> i == d ? _eachindex(x, i) : _colon(I[i]), Val(dim))
-    slice = CartesianIndices(ntuple(i -> i == d ? _colon(1) : _eachindex(x, i), Val(dim)))
-    (vec(view(x, axisindices(x, I)...)) for I in slice)
-end
-
-function _direction(contour::AbstractVector{Int})
-    @inbounds begin
-        if length(contour) == 2
-            contour[1] < contour[2] && return 1
-            contour[1] > contour[2] && return -1
-            return 0
-        elseif length(contour) == 3
-            (contour[1] < contour[2] || contour[2] < contour[3]) && return 1
-            (contour[1] > contour[2] || contour[2] > contour[3]) && return -1
-            return 0
-        else
-            error("unreachable")
-        end
-    end
-end
-
-function BoundaryCondition(withinbounds::AbstractArray{Bool, dim}) where {dim}
-    boundcontours = ntuple(d -> Array{Int}(undef, size(withinbounds)), Val(dim))
-    node_positions = ntuple(d -> Array{NodePosition}(undef, size(withinbounds)), Val(dim))
-    bc = BoundaryCondition(boundcontours, node_positions)
-    setbounds!(bc, withinbounds)
-    bc
-end
-
-function setbounds!(bc::BoundaryCondition{dim}, withinbounds::AbstractArray{Bool, dim}) where {dim}
-    for d in 1:dim
-        # update boundcontours
-        boundcontour = bc.boundcontours[d]
-        @assert size(boundcontour) == size(withinbounds)
-        fill!(boundcontour, size(boundcontour, d) + 1) # set large value for initialization
-        for args in zip(eachaxis(boundcontour, d), eachaxis(withinbounds, d))
-            set_boundcontour!(args...)
-        end
-        # update node_positions
-        node_position = bc.node_positions[d]
-        for (axis, contour) in zip(eachaxis(node_position, d), eachaxis(boundcontour, d))
-            @assert length(axis) == length(contour)
-            @inbounds for i in eachindex(axis)
-                inds = intersect(i-1:i+1, eachindex(axis))
-                axis[i] = NodePosition(contour[i], _direction(@view contour[inds]))
-            end
-        end
-    end
-end
-
-
 """
     Grid([::Type{NodeState}], [::Interpolation], axes::AbstractVector...)
 
@@ -136,7 +20,6 @@ struct Grid{dim, T, F <: Union{Nothing, Interpolation}, Node, State <: SpArray{N
     gridsteps_inv::NTuple{dim, T}
     state::State
     coordinate_system::CS
-    bc::BoundaryCondition{dim}
 end
 
 Base.size(x::Grid) = map(length, gridaxes(x))
@@ -148,18 +31,10 @@ gridaxes(x::Grid) = x.axes
 gridaxes(x::Grid, i::Int) = (@_propagate_inbounds_meta; gridaxes(x)[i])
 gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 
-node_position(grid::Grid, I) = (@_propagate_inbounds_meta; node_position(grid.bc, I))
-node_position(grid::Grid, I, d) = (@_propagate_inbounds_meta; node_position(grid.bc, I, d))
-isonbound(grid::Grid, I) = (@_propagate_inbounds_meta; isonbound(grid.bc, I))
-isonbound(grid::Grid, I, d::Int) = (@_propagate_inbounds_meta; isonbound(grid.bc, I, d))
-isinbound(grid::Grid, I) = (@_propagate_inbounds_meta; isinbound(grid.bc, I))
-isinbound(grid::Grid, I, d::Int) = (@_propagate_inbounds_meta; isinbound(grid.bc, I, d))
-setbounds!(grid::Grid, withinbounds::AbstractArray{Bool}) = setbounds!(grid.bc, withinbounds)
-
 check_interpolation(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("`Grid` must include the information of interpolation, see help `?Grid` for more details."))
 check_interpolation(::Grid{<: Any, <: Any, <: Interpolation}) = nothing
 
-function Grid(::Type{Node}, interp, axes::NTuple{dim, AbstractVector}; coordinate_system = nothing, withinbounds = falses(map(length, axes))) where {Node, dim}
+function Grid(::Type{Node}, interp, axes::NTuple{dim, AbstractVector}; coordinate_system = nothing) where {Node, dim}
     state = SpArray(StructVector{Node}(undef, 0), SpPattern(map(length, axes)))
     dx = map(step, axes)
     dx⁻¹ = inv.(dx)
@@ -174,7 +49,6 @@ function Grid(::Type{Node}, interp, axes::NTuple{dim, AbstractVector}; coordinat
         T.(dx⁻¹),
         state,
         get_coordinate_system(coordinate_system, Val(dim)),
-        BoundaryCondition(withinbounds)
     )
 end
 function Grid(interp::Interpolation, axes::NTuple{dim, AbstractVector}; kwargs...) where {dim}
@@ -362,7 +236,6 @@ end
 
 blocksize(grid::Grid) = (ncells = size(grid) .- 1; @. (ncells - 1) >> BLOCK_UNIT + 1)
 
-
 struct BlockStepIndices{N} <: AbstractArray{CartesianIndex{N}, N}
     inds::NTuple{N, StepRange{Int, Int}}
 end
@@ -377,20 +250,31 @@ function threadsafe_blocks(gridsize::NTuple{dim, Int}) where {dim}
 end
 
 
-struct Boundary{dim}
+struct Boundaries{dim} <: AbstractArray{Tuple{CartesianIndex{dim}, Vec{dim, Int}}, dim}
+    inds::CartesianIndices{dim}
     n::Vec{dim, Int}
-    I::CartesianIndex{dim}
 end
+Base.IndexStyle(::Type{<: Boundaries}) = IndexCartesian()
+Base.size(x::Boundaries) = size(x.inds)
+Base.getindex(x::Boundaries{dim}, I::Vararg{Int, dim}) where {dim} = (@_propagate_inbounds_meta; (x.inds[I...], x.n))
 
-function eachboundary(grid::Grid{dim, T}) where {dim, T}
-    _dir(pos::NodePosition, d::Int) = Vec{dim}(i -> ifelse(i === d, pos.dir, 0))
-    function getbound(grid, I, d)
-        @inbounds begin
-            pos = node_position(grid, I, d)
-            Boundary(_dir(pos, d), I)
-        end
+function _boundaries(grid::AbstractArray{<: Any, dim}, which::String) where {dim}
+    if     which[2] == 'x'; axis = 1
+    elseif which[2] == 'y'; axis = 2
+    elseif which[2] == 'z'; axis = 3
+    else error("invalid bound name")
     end
-    ntuple(Val(dim)) do d
-        (getbound(grid, I, d) for I in CartesianIndices(grid) if @inbounds(isonbound(grid, I, d)))
-    end |> Iterators.flatten
+
+    if     which[1] == '-'; index = firstindex(grid, axis); dir =  1
+    elseif which[1] == '+'; index =  lastindex(grid, axis); dir = -1
+    else error("invalid bound name")
+    end
+
+    inds = CartesianIndices(ntuple(d -> d==axis ? (index:index) : axes(grid, d), Val(dim)))
+    n = Vec(ntuple(d -> ifelse(d==axis, dir, 0), Val(dim)))
+
+    Boundaries(inds, n)
+end
+function boundaries(grid::AbstractArray, which::Vararg{String, N}) where {N}
+    Iterators.flatten(ntuple(i -> _boundaries(grid, which[i]), Val(N)))
 end

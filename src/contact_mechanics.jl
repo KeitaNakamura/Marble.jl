@@ -65,7 +65,7 @@ julia> v + contacted(cond, v, n)
  0.0
 ```
 """
-function contacted(cond::ContactMohrCoulomb, v::Vec{dim, T}, n::Vec{dim, T})::Vec{dim, T} where {dim, T}
+function contacted(cond::ContactMohrCoulomb, v::Vec{dim, T}, n::Union{Vec{dim, T}, Vec{dim, Int}})::Vec{dim, T} where {dim, T}
     v_sticky = -v # contact force for sticky contact
     issticky(cond) && return v_sticky
     d = v_sticky ⋅ n

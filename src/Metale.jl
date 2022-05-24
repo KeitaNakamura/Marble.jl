@@ -22,9 +22,8 @@ export
     gridsteps,
     gridaxes,
     gridorigin,
+    boundaries,
     generate_pointstate,
-    setbounds!,
-    eachboundary,
 # interpolations
     update!,
     BSpline,
