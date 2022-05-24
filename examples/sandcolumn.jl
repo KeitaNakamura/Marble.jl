@@ -1,4 +1,4 @@
-using Poingr
+using Metale
 using MaterialModels
 
 function sandcolumn(
@@ -39,7 +39,7 @@ function sandcolumn(
     # Outputs
     mkpath(outdir)
     paraview_file = joinpath(outdir, "out")
-    Poingr.defalut_output_paraview_initialize(paraview_file)
+    Metale.defalut_output_paraview_initialize(paraview_file)
 
     logger = Logger(0.0, 0.6, 0.01; showprogress)
 
@@ -95,7 +95,7 @@ function sandcolumn(
         update!(logger, t += dt)
 
         if islogpoint(logger)
-            Poingr.defalut_output_paraview_append(
+            Metale.defalut_output_paraview_append(
                 paraview_file,
                 grid,
                 pointstate,

@@ -1,4 +1,4 @@
-module Poingr
+module Metale
 
 using Base: @_inline_meta, @_propagate_inbounds_meta, @pure
 using Base.Cartesian: @ntuple, @nall

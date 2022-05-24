@@ -1,5 +1,5 @@
 ```@meta
-DocTestSetup = :(using Poingr)
+DocTestSetup = :(using Metale)
 ```
 
 # Grid
@@ -10,7 +10,7 @@ Pages = ["grid.md"]
 ```
 
 ```@autodocs
-Modules = [Poingr]
+Modules = [Metale]
 Order   = [:type, :function]
 Pages   = ["grid.jl"]
 ```

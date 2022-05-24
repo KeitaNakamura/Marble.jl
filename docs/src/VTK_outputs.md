@@ -1,8 +1,8 @@
 ```@meta
-DocTestSetup = :(using Poingr)
+DocTestSetup = :(using Metale)
 ```
 
-# Poingr.VTKOutputs
+# Metale.VTKOutputs
 
 ```@index
 Order = [:type, :function]
@@ -10,7 +10,7 @@ Pages = ["VTK_outputs.md"]
 ```
 
 ```@autodocs
-Modules = [Poingr]
+Modules = [Metale]
 Order   = [:type, :function]
 Pages   = ["vtk.jl"]
 ```

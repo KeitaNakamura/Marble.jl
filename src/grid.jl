@@ -122,7 +122,7 @@ Construct `Grid` by `axes`.
 # Examples
 ```jldoctest
 julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
-4×4 Grid{2, Float64, Nothing, Nothing, Poingr.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+4×4 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]
  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]
  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]
@@ -195,7 +195,7 @@ Grid(axes::AbstractVector...; kwargs...) = Grid(Nothing, nothing, axes; kwargs..
 end
 
 """
-    Poingr.neighboring_nodes(grid, x::Vec, h)
+    Metale.neighboring_nodes(grid, x::Vec, h)
 
 Return `CartesianIndices` storing neighboring node indices around `x`.
 `h` is a range for searching and its unit is `gridsteps` `dx`.
@@ -204,7 +204,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0)
-6-element Grid{1, Float64, Nothing, Nothing, Poingr.SpArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, Poingr.OneDimensional}:
+6-element Grid{1, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, Metale.OneDimensional}:
  [0.0]
  [1.0]
  [2.0]
@@ -212,12 +212,12 @@ julia> grid = Grid(0.0:1.0:5.0)
  [4.0]
  [5.0]
 
-julia> Poingr.neighboring_nodes(grid, Vec(1.5), 1)
+julia> Metale.neighboring_nodes(grid, Vec(1.5), 1)
 2-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(2,)
  CartesianIndex(3,)
 
-julia> Poingr.neighboring_nodes(grid, Vec(1.5), 2)
+julia> Metale.neighboring_nodes(grid, Vec(1.5), 2)
 4-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(1,)
  CartesianIndex(2,)
@@ -248,8 +248,8 @@ end
 
 
 """
-    Poingr.neighboring_cells(grid, x::Vec, h::Int)
-    Poingr.neighboring_cells(grid, cellindex::CartesianIndex, h::Int)
+    Metale.neighboring_cells(grid, x::Vec, h::Int)
+    Metale.neighboring_cells(grid, cellindex::CartesianIndex, h::Int)
 
 Return `CartesianIndices` storing neighboring cell indices around `x`.
 `h` is number of outer cells around cell where `x` locates.
@@ -258,7 +258,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{2, Float64, Nothing, Nothing, Poingr.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+6×6 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -268,13 +268,13 @@ julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
 
 julia> x = Vec(1.5, 1.5);
 
-julia> Poingr.neighboring_cells(grid, x, 1)
+julia> Metale.neighboring_cells(grid, x, 1)
 3×3 CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}:
  CartesianIndex(1, 1)  CartesianIndex(1, 2)  CartesianIndex(1, 3)
  CartesianIndex(2, 1)  CartesianIndex(2, 2)  CartesianIndex(2, 3)
  CartesianIndex(3, 1)  CartesianIndex(3, 2)  CartesianIndex(3, 3)
 
-julia> Poingr.neighboring_cells(grid, Poingr.whichcell(grid, x), 1) == ans
+julia> Metale.neighboring_cells(grid, Metale.whichcell(grid, x), 1) == ans
 true
 ```
 """
@@ -301,14 +301,14 @@ end
 end
 
 """
-    Poingr.whichcell(grid, x::Vec)
+    Metale.whichcell(grid, x::Vec)
 
 Return cell index where `x` locates.
 
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{2, Float64, Nothing, Nothing, Poingr.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+6×6 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -316,7 +316,7 @@ julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
  [4.0, 0.0]  [4.0, 1.0]  [4.0, 2.0]  [4.0, 3.0]  [4.0, 4.0]  [4.0, 5.0]
  [5.0, 0.0]  [5.0, 1.0]  [5.0, 2.0]  [5.0, 3.0]  [5.0, 4.0]  [5.0, 5.0]
 
-julia> Poingr.whichcell(grid, Vec(1.5, 1.5))
+julia> Metale.whichcell(grid, Vec(1.5, 1.5))
 CartesianIndex(2, 2)
 ```
 """
@@ -329,7 +329,7 @@ CartesianIndex(2, 2)
 end
 
 """
-    Poingr.whichblock(grid, x::Vec)
+    Metale.whichblock(grid, x::Vec)
 
 Return block index where `x` locates.
 The unit block size is `2^$BLOCK_UNIT` cells.
@@ -337,7 +337,7 @@ The unit block size is `2^$BLOCK_UNIT` cells.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:10.0, 0.0:1.0:10.0)
-11×11 Grid{2, Float64, Nothing, Nothing, Poingr.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+11×11 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]   [0.0, 1.0]   [0.0, 2.0]   …  [0.0, 9.0]   [0.0, 10.0]
  [1.0, 0.0]   [1.0, 1.0]   [1.0, 2.0]      [1.0, 9.0]   [1.0, 10.0]
  [2.0, 0.0]   [2.0, 1.0]   [2.0, 2.0]      [2.0, 9.0]   [2.0, 10.0]
@@ -350,7 +350,7 @@ julia> grid = Grid(0.0:1.0:10.0, 0.0:1.0:10.0)
  [9.0, 0.0]   [9.0, 1.0]   [9.0, 2.0]      [9.0, 9.0]   [9.0, 10.0]
  [10.0, 0.0]  [10.0, 1.0]  [10.0, 2.0]  …  [10.0, 9.0]  [10.0, 10.0]
 
-julia> Poingr.whichblock(grid, Vec(8.5, 1.5))
+julia> Metale.whichblock(grid, Vec(8.5, 1.5))
 CartesianIndex(2, 1)
 ```
 """

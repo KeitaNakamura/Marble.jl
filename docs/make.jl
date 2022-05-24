@@ -1,17 +1,17 @@
 using Documenter
-using Poingr
+using Metale
 
 # Setup for doctests in docstrings
-DocMeta.setdocmeta!(Poingr, :DocTestSetup, recursive = true,
+DocMeta.setdocmeta!(Metale, :DocTestSetup, recursive = true,
     quote
-        using Poingr
+        using Metale
     end
 )
 
 makedocs(;
     format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
-    modules = [Poingr],
-    sitename = "Poingr.jl",
+    modules = [Metale],
+    sitename = "Metale.jl",
     pages=[
         "Home" => "index.md",
         "Grid" => "grid.md",
@@ -23,6 +23,6 @@ makedocs(;
 )
 
 deploydocs(
-    repo = "github.com/KeitaNakamura/Poingr.jl.git",
+    repo = "github.com/KeitaNakamura/Metale.jl.git",
     devbranch = "main",
 )
