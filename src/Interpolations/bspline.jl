@@ -208,6 +208,7 @@ mutable struct BSplineValues{order, dim, T, L} <: MPValues{dim, T, BSplineValue{
     len::Int
 end
 
+# constructors
 function BSplineValues{order, dim, T, L}() where {order, dim, T, L}
     N = MVector{L, T}(undef)
     ∇N = MVector{L, Vec{dim, T}}(undef)
@@ -215,19 +216,24 @@ function BSplineValues{order, dim, T, L}() where {order, dim, T, L}
     xp = zero(Vec{dim, T})
     BSplineValues(BSpline{order}(), N, ∇N, gridindices, xp, 0)
 end
-
 function MPValues{dim, T}(F::BSpline{order}) where {order, dim, T}
     L = getnnodes(F, Val(dim))
     BSplineValues{order, dim, T, L}()
 end
 
+getkernelfunction(x::BSplineValues) = x.F
+
 node_position(ax::Vector, i::Int) = i - ifelse(2i<length(ax), firstindex(ax), lastindex(ax))
 node_position(grid::Grid{dim}, index::Index{dim}) where {dim} = map(node_position, gridaxes(grid), Tuple(index.I))
 
 function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
-    F = mpvalues.F
+    # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
+
+    F = getkernelfunction(mpvalues)
+
+    # update
     mpvalues.xp = xp
     update_active_gridindices!(mpvalues, neighboring_nodes(grid, xp, getsupportlength(F)), spat)
     @inbounds @simd for i in 1:length(mpvalues)

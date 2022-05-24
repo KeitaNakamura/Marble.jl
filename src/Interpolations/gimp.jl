@@ -93,6 +93,7 @@ mutable struct GIMPValues{dim, T, L} <: MPValues{dim, T, GIMPValue{dim, T}}
     len::Int
 end
 
+# constructors
 function GIMPValues{dim, T, L}() where {dim, T, L}
     N = MVector{L, T}(undef)
     ∇N = MVector{L, Vec{dim, T}}(undef)
@@ -100,16 +101,21 @@ function GIMPValues{dim, T, L}() where {dim, T, L}
     xp = zero(Vec{dim, T})
     GIMPValues(GIMP(), N, ∇N, gridindices, xp, 0)
 end
-
 function MPValues{dim, T}(F::GIMP) where {dim, T}
     L = getnnodes(F, Val(dim))
     GIMPValues{dim, T, L}()
 end
 
+getkernelfunction(x::GIMPValues) = x.F
+
 function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, xp::Vec{dim}, r::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
-    F = mpvalues.F
+    # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
+
+    F = getkernelfunction(mpvalues)
+
+    # update
     mpvalues.xp = xp
     dx⁻¹ = gridsteps_inv(grid)
     update_active_gridindices!(mpvalues, neighboring_nodes(grid, xp, getsupportlength(F, r .* dx⁻¹)), spat)

@@ -21,6 +21,7 @@ mutable struct KernelCorrectionValues{K, dim, T, nnodes} <: MPValues{dim, T, Ker
     len::Int
 end
 
+# constructors
 function KernelCorrectionValues{K, dim, T, nnodes}() where {K, dim, T, nnodes}
     N = MVector{nnodes, T}(undef)
     ∇N = MVector{nnodes, Vec{dim, T}}(undef)
@@ -28,7 +29,6 @@ function KernelCorrectionValues{K, dim, T, nnodes}() where {K, dim, T, nnodes}
     xp = zero(Vec{dim, T})
     KernelCorrectionValues(KernelCorrection(K()), N, ∇N, gridindices, xp, 0)
 end
-
 function MPValues{dim, T}(c::KernelCorrection{K}) where {dim, T, K}
     L = getnnodes(K(), Val(dim))
     KernelCorrectionValues{K, dim, T, L}()
@@ -37,11 +37,14 @@ end
 getkernelfunction(c::KernelCorrectionValues) = getkernelfunction(c.F)
 
 function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}, inds, args...) where {dim, T}
-    F = getkernelfunction(mpvalues)
+    # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
-    mpvalues.xp = xp
 
+    F = getkernelfunction(mpvalues)
+
+    # update
+    mpvalues.xp = xp
     allactive = update_active_gridindices!(mpvalues, inds, spat)
     if allactive
         wᵢ, ∇wᵢ = values_gradients(F, grid, xp, args...)
