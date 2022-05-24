@@ -57,7 +57,7 @@ function Base.values(::BSpline{3}, x::T) where {T <: Real}
     ξ³ = ξ² .* ξ
     @. $V(-1/6,0.5,-0.5,1/6)*ξ³ + $V(1,-1,-1,1)*ξ² + $V(-2,0,0,2)*ξ + $V(4/3,2/3,2/3,4/3)
 end
-@inline Base.values(bspline::BSpline, x::Vec) = Tuple(otimes(broadcast_tuple(values, bspline, Tuple(x))...))
+@inline Base.values(bspline::BSpline, x::Vec) = Tuple(otimes(maptuple(values, bspline, Tuple(x))...))
 
 # Fast calculations for values and gradients
 # `x` must be normalized by `dx`
@@ -91,10 +91,10 @@ end
     end
     quote
         @_inline_meta
-        vals_grads = broadcast_tuple(values_gradients, bspline, Tuple(x))
-        vals  = broadcast_tuple(getindex, vals_grads, 1)
-        grads = broadcast_tuple(getindex, vals_grads, 2)
-        Tuple(otimes(vals...)), broadcast_tuple(Vec, $(exps...))
+        vals_grads = maptuple(values_gradients, bspline, Tuple(x))
+        vals  = maptuple(getindex, vals_grads, 1)
+        grads = maptuple(getindex, vals_grads, 2)
+        Tuple(otimes(vals...)), maptuple(Vec, $(exps...))
     end
 end
 
@@ -119,7 +119,7 @@ function value(::BSpline{4}, ξ::Real)
     ξ < 1.5 ? -(16ξ^4 - 80ξ^3 + 120ξ^2 - 20ξ - 55) / 96 :
     ξ < 2.5 ? (5 - 2ξ)^4 / 384 : zero(ξ)
 end
-@inline value(bspline::BSpline, ξ::Vec) = prod(broadcast_tuple(value, bspline, Tuple(ξ)))
+@inline value(bspline::BSpline, ξ::Vec) = prod(maptuple(value, bspline, Tuple(ξ)))
 
 # Steffen, M., Kirby, R. M., & Berzins, M. (2008).
 # Analysis and reduction of quadrature errors in the material point method (MPM).
@@ -157,7 +157,7 @@ function value(spline::BSpline{3}, ξ::Real, pos::Int)::typeof(ξ)
         value(spline, ξ)
     end
 end
-@inline value(bspline::BSpline, ξ::Vec, pos::Tuple{Vararg{Int}}) = prod(broadcast_tuple(value, bspline, Tuple(ξ), pos))
+@inline value(bspline::BSpline, ξ::Vec, pos::Tuple{Vararg{Int}}) = prod(maptuple(value, bspline, Tuple(ξ), pos))
 
 
 struct BSplineValue{dim, T} <: MPValue
