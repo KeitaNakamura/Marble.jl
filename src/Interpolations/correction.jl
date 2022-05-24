@@ -42,16 +42,11 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
     fillzero!(mpvalues.∇N)
     mpvalues.xp = xp
 
-    dx⁻¹ = gridsteps_inv(grid)
     allactive = update_active_gridindices!(mpvalues, inds, spat)
     if allactive
-        wᵢ, ∇wᵢ = values_gradients(F, xp .* dx⁻¹, args...)
-        @inbounds @simd for i in 1:length(mpvalues)
-            I = gridindices(mpvalues, i)
-            xi = grid[I]
-            mpvalues.N[i] = wᵢ[i]
-            mpvalues.∇N[i] = ∇wᵢ[i] .* dx⁻¹
-        end
+        wᵢ, ∇wᵢ = values_gradients(F, grid, xp, args...)
+        mpvalues.N .= wᵢ
+        mpvalues.∇N .= ∇wᵢ
     else
         A = zero(Mat{dim, dim, T})
         β = zero(Vec{dim, T})
@@ -60,9 +55,7 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
         @inbounds @simd for i in 1:length(mpvalues)
             I = gridindices(mpvalues, i)
             xi = grid[I]
-            ξ = (xp - xi) .* dx⁻¹
-            ∇w, w = gradient(ξ -> value(F, ξ, args...), ξ, :all)
-            ∇w = ∇w .* dx⁻¹
+            w, ∇w = value_gradient(F, grid, I, xp, args...)
             A += w * (xi - xp) ⊗ (xi - xp)
             β += w * (xi - xp)
             A′ += ∇w ⊗ (xi - xp)
@@ -108,8 +101,7 @@ end
 function update!(mpvalues::KernelCorrectionValues{GIMP}, grid::Grid, xp::Vec, r::Vec, spat::AbstractArray{Bool})
     F = getkernelfunction(mpvalues)
     dx⁻¹ = gridsteps_inv(grid)
-    rdx⁻¹ = r.*dx⁻¹
-    _update!(mpvalues, grid, xp, spat, neighboring_nodes(grid, xp, getsupportlength(F, rdx⁻¹)), rdx⁻¹)
+    _update!(mpvalues, grid, xp, spat, neighboring_nodes(grid, xp, getsupportlength(F, r.*dx⁻¹)), r)
 end
 
 @inline function Base.getindex(mpvalues::KernelCorrectionValues, i::Int)

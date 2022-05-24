@@ -50,7 +50,9 @@ function MPValues{dim, T}(F::WLS{B, K}) where {B, K, dim, T}
     WLSValues{B, K, dim, T, n, L, L^2}()
 end
 
-function _update!(mpvalues::WLSValues, F, grid::Grid, xp::Vec, spat::AbstractArray{Bool}, inds)
+# general version
+function _update!(mpvalues::WLSValues, grid::Grid, xp::Vec, spat::AbstractArray{Bool}, inds, args...)
+    F = getkernelfunction(mpvalues)
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
     fillzero!(mpvalues.w)
@@ -58,12 +60,10 @@ function _update!(mpvalues::WLSValues, F, grid::Grid, xp::Vec, spat::AbstractArr
     M = zero(mpvalues.Minv)
     mpvalues.xp = xp
     update_active_gridindices!(mpvalues, inds, spat)
-    dx⁻¹ = gridsteps_inv(grid)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
         xi = grid[I]
-        ξ = (xp - xi) .* dx⁻¹
-        w = F(ξ)
+        w = value(F, grid, I, xp, args...)
         p = value(P, xi - xp)
         M += w * p ⊗ p
         mpvalues.w[i] = w
@@ -80,19 +80,20 @@ function _update!(mpvalues::WLSValues, F, grid::Grid, xp::Vec, spat::AbstractArr
     mpvalues
 end
 
-function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, F, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}, inds) where {dim, T}
+# fast version for `LinearWLS(BSpline{order}())`
+function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}, inds) where {dim, T}
+    F = getkernelfunction(mpvalues)
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
     fillzero!(mpvalues.w)
     P = getbasisfunction(mpvalues)
     mpvalues.xp = xp
 
-    dx⁻¹ = gridsteps_inv(grid)
     allactive = update_active_gridindices!(mpvalues, inds, spat)
     if allactive
         # fast version
         D = zero(Vec{dim, T}) # diagonal entries
-        wᵢ = values(getkernelfunction(mpvalues), xp .* dx⁻¹)
+        wᵢ = values(getkernelfunction(mpvalues), grid, xp)
         @inbounds @simd for i in 1:length(mpvalues)
             I = gridindices(mpvalues, i)
             xi = grid[I]
@@ -112,8 +113,7 @@ function _update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, F
         @inbounds @simd for i in 1:length(mpvalues)
             I = gridindices(mpvalues, i)
             xi = grid[I]
-            ξ = (xp - xi) .* dx⁻¹
-            w = F(ξ)
+            w = value(F, grid, I, xp)
             p = value(P, xi - xp)
             M += w * p ⊗ p
             mpvalues.w[i] = w
@@ -135,14 +135,13 @@ end
 
 function update!(mpvalues::WLSValues, grid::Grid, xp::Vec, spat::AbstractArray{Bool})
     F = getkernelfunction(mpvalues)
-    _update!(mpvalues, ξ -> value(F, ξ), grid, xp, spat, neighboring_nodes(grid, xp, getsupportlength(F)))
+    _update!(mpvalues, grid, xp, spat, neighboring_nodes(grid, xp, getsupportlength(F)))
 end
 
 function update!(mpvalues::WLSValues{<: Any, GIMP}, grid::Grid, xp::Vec, r::Vec, spat::AbstractArray{Bool})
     F = getkernelfunction(mpvalues)
     dx⁻¹ = gridsteps_inv(grid)
-    rdx⁻¹ = r.*dx⁻¹
-    _update!(mpvalues, ξ -> value(F, ξ, rdx⁻¹), grid, xp, spat, neighboring_nodes(grid, xp, getsupportlength(F, rdx⁻¹)))
+    _update!(mpvalues, grid, xp, spat, neighboring_nodes(grid, xp, getsupportlength(F, r.*dx⁻¹)), r)
 end
 
 @inline function Base.getindex(mpvalues::WLSValues, i::Int)
