@@ -1,3 +1,8 @@
+struct NodeState
+    a::Float64
+    b::Float64
+end
+
 @testset "Grid" begin
     # constructors
     @test @inferred(Grid(0:10))::Grid{1, Float64} == Vec.(0:10)

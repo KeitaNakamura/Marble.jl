@@ -1,5 +1,6 @@
 @testset "BSplineValues" begin
     for T in (Float32, Float64)
+        Random.seed!(1234)
         TOL = sqrt(eps(T))
         for dim in 1:3
             grid = Grid(ntuple(i -> 0:0.1:1, Val(dim)))
@@ -23,6 +24,7 @@ end
 
 @testset "WLSValues" begin
     for T in (Float32, Float64)
+        Random.seed!(1234)
         TOL = sqrt(eps(T))
         for dim in 1:3
             grid = Grid(ntuple(i -> 0.0:0.1:1.0, Val(dim)))
@@ -43,6 +45,7 @@ end
 
 @testset "GIMPValues" begin
     for T in (Float32, Float64)
+        Random.seed!(1234)
         TOL = sqrt(eps(T))
         for dim in 1:3
             grid = Grid(ntuple(i -> 0.0:0.1:1.0, Val(dim)))
@@ -69,6 +72,7 @@ end
 
 @testset "KernelCorrectionValues" begin
     for T in (Float32, Float64)
+        Random.seed!(1234)
         TOL = sqrt(eps(T))
         for dim in 1:3
             grid = Grid(ntuple(i -> 0.0:0.1:1.0, Val(dim)))

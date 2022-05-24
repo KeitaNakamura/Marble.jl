@@ -5,13 +5,6 @@ using Test
 using ReadVTK
 using NaturalSort
 
-using Metale: Index
-
-struct NodeState
-    a::Float64
-    b::Float64
-end
-
 include("utils.jl")
 include("sparray.jl")
 include("grid.jl")
