@@ -81,9 +81,7 @@ include("Interpolations/basis.jl")
 include("Interpolations/wls.jl")
 include("Interpolations/correction.jl")
 
-include("nodestate.jl")
-include("pointstate.jl")
-
+include("states.jl")
 include("mpcache.jl")
 include("transfer.jl")
 include("contact_mechanics.jl")
