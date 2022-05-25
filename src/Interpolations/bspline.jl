@@ -61,14 +61,17 @@ function value(::BSpline{4}, ξ::Real)
     ξ < 2.5 ? (5 - 2ξ)^4 / 384 : zero(ξ)
 end
 @inline value(bspline::BSpline, ξ::Vec) = prod(maptuple(value, bspline, Tuple(ξ)))
-function value(bspline::BSpline, grid::Grid, I::Index, xp::Vec) # used in `WLS`
+# used in `WLS`
+function value(bspline::BSpline, grid::Grid, I::Index, xp::Vec)
     @_inline_propagate_inbounds_meta
     xi = grid[I]
     dx⁻¹ = gridsteps_inv(grid)
     ξ = (xp - xi) .* dx⁻¹
     value(bspline, ξ)
 end
-function value_gradient(bspline::BSpline, grid::Grid, I::Index, xp::Vec) # used in `KernelCorrection`
+@inline value(bspline::BSpline, grid::Grid, I::Index, pt) = value(bspline::BSpline, grid::Grid, I::Index, pt.x)
+# used in `KernelCorrection`
+function value_gradient(bspline::BSpline, grid::Grid, I::Index, xp::Vec)
     @_inline_propagate_inbounds_meta
     xi = grid[I]
     dx⁻¹ = gridsteps_inv(grid)
@@ -76,6 +79,7 @@ function value_gradient(bspline::BSpline, grid::Grid, I::Index, xp::Vec) # used 
     ∇w, w = gradient(ξ -> value(bspline, ξ), ξ, :all)
     w, ∇w.*dx⁻¹
 end
+@inline value_gradient(bspline::BSpline, grid::Grid, I::Index, pt) = value_gradient(bspline::BSpline, grid::Grid, I::Index, pt.x)
 
 # Steffen, M., Kirby, R. M., & Berzins, M. (2008).
 # Analysis and reduction of quadrature errors in the material point method (MPM).
@@ -151,6 +155,7 @@ function Base.values(bspline::BSpline, grid::Grid, xp::Vec)
     dx⁻¹ = gridsteps_inv(grid)
     values(bspline, xp .* dx⁻¹)
 end
+@inline Base.values(bspline::BSpline, grid::Grid, pt) = values(bspline, grid, pt.x)
 
 # Fast calculations for values and gradients
 # used in `KernelCorrection`
@@ -196,6 +201,7 @@ function values_gradients(bspline::BSpline, grid::Grid, xp::Vec)
     wᵢ, ∇wᵢ = values_gradients(bspline, xp .* dx⁻¹)
     wᵢ, broadcast(.*, ∇wᵢ, Ref(dx⁻¹))
 end
+@inline values_gradients(bspline::BSpline, grid::Grid, pt) = values_gradients(bspline, grid, pt.x)
 
 
 struct BSplineValue{dim, T} <: MPValue

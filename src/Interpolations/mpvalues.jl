@@ -30,8 +30,8 @@ julia> sum(mpvalues.∇N)
 """
 MPValues{dim}(F::Interpolation) where {dim} = MPValues{dim, Float64}(F)
 
-update!(mpvalues::MPValues, grid::Grid, x::Vec) = update!(mpvalues, grid, x, trues(size(grid)))
-update!(mpvalues::MPValues, grid::Grid, x::Vec, r::Vec) = update!(mpvalues, grid, x, r, trues(size(grid)))
+update!(mpvalues::MPValues, grid::Grid, pt, spat::AbstractArray{Bool}) = update!(mpvalues, grid, pt.x, spat)
+update!(mpvalues::MPValues, grid::Grid, pt) = update!(mpvalues, grid, pt, trues(size(grid)))
 
 function update_active_gridindices!(mpvalues::MPValues, gridindices::CartesianIndices{dim}, spat::AbstractArray{Bool, dim}) where {dim}
     count = 0

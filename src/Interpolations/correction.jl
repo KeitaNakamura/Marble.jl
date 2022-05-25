@@ -39,18 +39,19 @@ end
 
 getkernelfunction(c::KernelCorrectionValues) = getkernelfunction(c.F)
 
-function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}, inds, args...) where {dim, T}
+function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{dim}, pt, spat::AbstractArray{Bool, dim}) where {dim, T}
     # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
 
     F = getkernelfunction(mpvalues)
+    xp = getx(pt) # defined in wls.jl
 
     # update
     mpvalues.xp = xp
-    allactive = update_active_gridindices!(mpvalues, inds, spat)
+    allactive = update_active_gridindices!(mpvalues, neighbornodes(F, grid, pt), spat)
     if allactive
-        wᵢ, ∇wᵢ = values_gradients(F, grid, xp, args...)
+        wᵢ, ∇wᵢ = values_gradients(F, grid, pt)
         mpvalues.N .= wᵢ
         mpvalues.∇N .= ∇wᵢ
     else
@@ -61,7 +62,7 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
         @inbounds @simd for i in 1:length(mpvalues)
             I = gridindices(mpvalues, i)
             xi = grid[I]
-            w, ∇w = value_gradient(F, grid, I, xp, args...)
+            w, ∇w = value_gradient(F, grid, I, pt)
             A += w * (xi - xp) ⊗ (xi - xp)
             β += w * (xi - xp)
             A′ += ∇w ⊗ (xi - xp)
@@ -96,16 +97,6 @@ function _update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{d
     end
 
     mpvalues
-end
-
-function update!(mpvalues::KernelCorrectionValues, grid::Grid, xp::Vec, spat::AbstractArray{Bool})
-    F = getkernelfunction(mpvalues)
-    _update!(mpvalues, grid, xp, spat, neighbornodes(F, grid, xp))
-end
-
-function update!(mpvalues::KernelCorrectionValues{GIMP}, grid::Grid, xp::Vec, r::Vec, spat::AbstractArray{Bool})
-    F = getkernelfunction(mpvalues)
-    _update!(mpvalues, grid, xp, spat, neighbornodes(F, grid, xp, r), r)
 end
 
 @inline function Base.getindex(mpvalues::KernelCorrectionValues, i::Int)

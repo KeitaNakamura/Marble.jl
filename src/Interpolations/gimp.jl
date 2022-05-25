@@ -21,14 +21,17 @@ function value(::GIMP, ξ::Real, l::Real) # `l` is normalized radius
     ξ < 1+l ? (1+l-ξ)^2 / 4l       : zero(ξ)
 end
 @inline value(f::GIMP, ξ::Vec, l::Vec) = prod(maptuple(value, f, Tuple(ξ), Tuple(l)))
-function value(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec) # used in `WLS`
+# used in `WLS`
+function value(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec)
     @_inline_propagate_inbounds_meta
     xi = grid[I]
     dx⁻¹ = gridsteps_inv(grid)
     ξ = (xp - xi) .* dx⁻¹
     value(f, ξ, rp.*dx⁻¹)
 end
-function value_gradient(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec) # used in `KernelCorrection`
+@inline value(f::GIMP, grid::Grid, I::Index, pt) = value(f, grid, I, pt.x, pt.r)
+# used in `KernelCorrection`
+function value_gradient(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec)
     @_inline_propagate_inbounds_meta
     xi = grid[I]
     dx⁻¹ = gridsteps_inv(grid)
@@ -36,6 +39,7 @@ function value_gradient(f::GIMP, grid::Grid, I::Index, xp::Vec, rp::Vec) # used 
     ∇w, w = gradient(ξ -> value(f, ξ, rp.*dx⁻¹), ξ, :all)
     w, ∇w.*dx⁻¹
 end
+@inline value_gradient(f::GIMP, grid::Grid, I::Index, pt) = value_gradient(f, grid, I, pt.x, pt.r)
 
 # used in `WLS`
 # `x` and `l` must be normalized by `dx`
@@ -50,6 +54,7 @@ function Base.values(f::GIMP, grid::Grid, xp::Vec, lp::Vec)
     dx⁻¹ = gridsteps_inv(grid)
     values(f, xp.*dx⁻¹, lp.*dx⁻¹)
 end
+@inline Base.values(f::GIMP, grid::Grid, pt) = values(f, grid, pt.x, pt.r)
 
 # used in `KernelCorrection`
 # `x` and `l` must be normalized by `dx`
@@ -81,6 +86,7 @@ function values_gradients(f::GIMP, grid::Grid, xp::Vec, lp::Vec)
     wᵢ, ∇wᵢ = values_gradients(f, xp.*dx⁻¹, lp.*dx⁻¹)
     wᵢ, broadcast(.*, ∇wᵢ, Ref(dx⁻¹))
 end
+@inline values_gradients(f::GIMP, grid::Grid, pt) = values_gradients(f, grid, pt.x, pt.r)
 
 
 struct GIMPValue{dim, T} <: MPValue
@@ -113,20 +119,21 @@ end
 
 getkernelfunction(x::GIMPValues) = x.F
 
-function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, xp::Vec{dim}, r::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, pt, spat::AbstractArray{Bool, dim}) where {dim}
     # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)
 
     F = getkernelfunction(mpvalues)
+    xp = pt.x
 
     # update
     mpvalues.xp = xp
     dx⁻¹ = gridsteps_inv(grid)
-    update_active_gridindices!(mpvalues, neighbornodes(F, grid, xp, r), spat)
+    update_active_gridindices!(mpvalues, neighbornodes(F, grid, pt), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
-        mpvalues.N[i], mpvalues.∇N[i] = value_gradient(F, grid, I, xp, r)
+        mpvalues.N[i], mpvalues.∇N[i] = value_gradient(F, grid, I, pt)
     end
     mpvalues
 end

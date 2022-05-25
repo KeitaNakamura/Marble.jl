@@ -93,16 +93,6 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, pointstate::AbstractVe
     spat
 end
 
-const AbstractGIMP = Union{GIMP, WLS{<: Any, GIMP}, KernelCorrection{GIMP}}
-const AbstractGIMPValues = Union{GIMPValues, WLSValues{<: Any, GIMP}, KernelCorrectionValues{GIMP}}
-
-function update_mpvalues!(mpvalues::Vector{<: MPValues}, grid, pointstate, spat, p)
-    update!(mpvalues[p], grid, pointstate.x[p], spat)
-end
-function update_mpvalues!(mpvalues::Vector{<: AbstractGIMPValues}, grid, pointstate, spat, p)
-    update!(mpvalues[p], grid, pointstate.x[p], pointstate.r[p], spat)
-end
-
 function update!(cache::MPCache, grid::Grid, pointstate; exclude::Union{Nothing, AbstractArray{Bool}} = nothing)
     @assert size(grid) == gridsize(cache)
 
@@ -117,7 +107,7 @@ function update!(cache::MPCache, grid::Grid, pointstate; exclude::Union{Nothing,
     sparsity_pattern!(spat, grid, pointstate, pointsinblock; exclude)
 
     Threads.@threads for p in 1:length(pointstate)
-        @inbounds update_mpvalues!(mpvalues, grid, pointstate, spat, p)
+        @inbounds update!(mpvalues[p], grid, LazyRow(pointstate, p), spat)
     end
 
     gridstate = grid.state

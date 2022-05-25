@@ -28,11 +28,17 @@ end
         TOL = sqrt(eps(T))
         for dim in 1:3
             grid = Grid(ntuple(i -> 0.0:0.1:1.0, Val(dim)))
-            for bspline in (QuadraticBSpline(), CubicBSpline(),)
-                mpvalues = MPValues{dim, T}(LinearWLS(bspline))
+            side_length = gridsteps(grid) ./ 2
+            r = Vec(side_length ./ 2)
+            for kernel in (QuadraticBSpline(), CubicBSpline(), GIMP())
+                mpvalues = MPValues{dim, T}(LinearWLS(kernel))
                 for _ in 1:2000
                     x = rand(Vec{dim, T})
-                    update!(mpvalues, grid, x)
+                    if kernel isa GIMP
+                        update!(mpvalues, grid, (;x,r))
+                    else
+                        update!(mpvalues, grid, x)
+                    end
                     @test sum(mpvalues.N) ≈ 1
                     @test sum(mpvalues.∇N) ≈ zero(Vec{dim}) atol=TOL
                     @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
@@ -58,7 +64,7 @@ end
                 for _ in 1:2000
                     x = rand(Vec{dim, T})
                     if all(a->a[2]<a[1]<1-a[2], zip(x,r))
-                        update!(mpvalues, grid, x, r)
+                        update!(mpvalues, grid, (;x,r))
                         @test sum(mpvalues.N) ≈ 1
                         @test sum(mpvalues.∇N) ≈ zero(Vec{dim}) atol=TOL
                         @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
@@ -83,7 +89,7 @@ end
                 for _ in 1:2000
                     x = rand(Vec{dim, T}) # failed on exactly boundary
                     if kernel isa GIMP
-                        update!(mpvalues, grid, x, r)
+                        update!(mpvalues, grid, (;x,r))
                     else
                         update!(mpvalues, grid, x)
                     end
