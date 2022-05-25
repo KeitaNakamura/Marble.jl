@@ -234,7 +234,11 @@ end
 
 getkernelfunction(x::BSplineValues) = x.F
 
-node_position(ax::Vector, i::Int) = i - ifelse(2i<length(ax), firstindex(ax), lastindex(ax))
+@inline function node_position(ax::Vector, i::Int)
+    left = i - firstindex(ax)
+    right = lastindex(ax) - i
+    ifelse(left < right, left, -right)
+end
 node_position(grid::Grid, index::Index) = map(node_position, gridaxes(grid), Tuple(index.I))
 
 function update!(mpvalues::BSplineValues, grid::Grid, xp::Vec, spat::AbstractArray{Bool})
