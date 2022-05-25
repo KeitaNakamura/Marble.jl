@@ -6,14 +6,14 @@ Construct `Grid` by `axes`.
 # Examples
 ```jldoctest
 julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
-4×4 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+4×4 Grid{Float64, 2, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]
  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]
  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]
  [3.0, 1.0]  [3.0, 2.0]  [3.0, 3.0]  [3.0, 4.0]
 ```
 """
-struct Grid{dim, T, F <: Union{Nothing, Interpolation}, Node, State <: SpArray{Node, dim}, CS <: CoordinateSystem} <: AbstractArray{Vec{dim, T}, dim}
+struct Grid{T, dim, F <: Union{Nothing, Interpolation}, Node, State <: SpArray{Node, dim}, CS <: CoordinateSystem} <: AbstractArray{Vec{dim, T}, dim}
     interpolation::F
     axes::NTuple{dim, Vector{T}}
     gridsteps::NTuple{dim, T}
@@ -34,36 +34,36 @@ gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 check_interpolation(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("`Grid` must include the information of interpolation, see help `?Grid` for more details."))
 check_interpolation(::Grid{<: Any, <: Any, <: Interpolation}) = nothing
 
-function Grid(::Type{Node}, interp, axes::NTuple{dim, AbstractVector}; coordinate_system = nothing) where {Node, dim}
+# `axes` isa `Tuple`
+function Grid{T}(::Type{Node}, interp, axes::NTuple{dim, AbstractVector}; coordinate_system = nothing) where {T, dim, Node}
     state = SpArray(StructVector{Node}(undef, 0), SpPattern(map(length, axes)))
     dx = map(step, axes)
-    dx⁻¹ = inv.(dx)
-
-    T = promote_type(eltype.(axes)...)
-    T = ifelse(T <: Integer, Float64, T) # use Float64 by default
+    dx⁻¹ = map(inv, dx)
 
     Grid(
         interp,
         map(Array{T}, axes),
-        T.(dx),
-        T.(dx⁻¹),
+        map(T, dx),
+        map(T, dx⁻¹),
         state,
         get_coordinate_system(coordinate_system, Val(dim)),
     )
 end
-function Grid(interp::Interpolation, axes::NTuple{dim, AbstractVector}; kwargs...) where {dim}
-    T = promote_type(map(eltype, axes)...)
+function Grid{T}(interp::Interpolation, axes::NTuple{dim, AbstractVector}; kwargs...) where {T, dim}
     Node = default_nodestate_type(interp, Val(dim), Val(T))
-    Grid(Node, interp, axes; kwargs...)
+    Grid{T}(Node, interp, axes; kwargs...)
 end
-Grid(axes::Tuple{Vararg{AbstractVector}}; kwargs...) = Grid(Nothing, nothing, axes; kwargs...)
+Grid{T}(axes::Tuple{Vararg{AbstractVector}}; kwargs...) where {T} = Grid{T}(Nothing, nothing, axes; kwargs...)
 
-# `interp` must be given if Node is given
-Grid(Node::Type, interp, axes::AbstractVector...; kwargs...) = Grid(Node, interp, axes; kwargs...)
-Grid(interp::Interpolation, axes::AbstractVector...; kwargs...) = Grid(interp, axes; kwargs...)
-Grid(axes::AbstractVector...; kwargs...) = Grid(Nothing, nothing, axes; kwargs...)
+# `axes` isa `Vararg`
+Grid{T}(Node::Type, interp, axes::AbstractVector...; kwargs...) where {T} = Grid{T}(Node, interp, axes; kwargs...)
+Grid{T}(interp::Interpolation, axes::AbstractVector...; kwargs...) where {T} = Grid{T}(interp, axes; kwargs...)
+Grid{T}(axes::AbstractVector...; kwargs...) where {T} = Grid{T}(Nothing, nothing, axes; kwargs...)
 
-@inline function Base.getindex(grid::Grid{dim}, i::Vararg{Int, dim}) where {dim}
+# `T == Float64` by default
+Grid(args...; kwargs...) = Grid{Float64}(args...; kwargs...)
+
+@inline function Base.getindex(grid::Grid{<: Any, dim}, i::Vararg{Int, dim}) where {dim}
     @boundscheck checkbounds(grid, i...)
     @inbounds Vec(map(getindex, grid.axes, i))
 end
@@ -78,7 +78,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0)
-6-element Grid{1, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, Metale.OneDimensional}:
+6-element Grid{Float64, 1, Nothing, Nothing, Metale.SpArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, Metale.OneDimensional}:
  [0.0]
  [1.0]
  [2.0]
@@ -99,7 +99,7 @@ julia> Metale.neighbornodes(grid, Vec(1.5), 2)
  CartesianIndex(4,)
 ```
 """
-@inline function neighbornodes(grid::Grid{dim}, x::Vec{dim}, h) where {dim}
+@inline function neighbornodes(grid::Grid{<: Any, dim}, x::Vec{dim}, h) where {dim}
     dx⁻¹ = gridsteps_inv(grid)
     xmin = gridorigin(grid)
     ξ = Tuple((x - xmin) .* dx⁻¹)
@@ -115,7 +115,7 @@ end
     CartesianIndices(@. UnitRange(imin, imax))
 end
 
-function neighborblocks(grid::Grid{dim}, blockindex::CartesianIndex{dim}, h::Int) where {dim}
+function neighborblocks(grid::Grid{<: Any, dim}, blockindex::CartesianIndex{dim}, h::Int) where {dim}
     inds = CartesianIndices(blocksize(grid))
     @boundscheck checkbounds(inds, blockindex)
     u = oneunit(blockindex)
@@ -133,7 +133,7 @@ Return cell index where `x` locates.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+6×6 Grid{Float64, 2, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -145,7 +145,7 @@ julia> Metale.whichcell(grid, Vec(1.5, 1.5))
 CartesianIndex(2, 2)
 ```
 """
-@inline function whichcell(grid::Grid{dim}, x::Vec{dim}) where {dim}
+@inline function whichcell(grid::Grid{<: Any, dim}, x::Vec{dim}) where {dim}
     dx⁻¹ = gridsteps_inv(grid)
     xmin = gridorigin(grid)
     ξ = Tuple((x - xmin) .* dx⁻¹)
@@ -162,7 +162,7 @@ The unit block size is `2^$BLOCK_UNIT` cells.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:10.0, 0.0:1.0:10.0)
-11×11 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+11×11 Grid{Float64, 2, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]   [0.0, 1.0]   [0.0, 2.0]   …  [0.0, 9.0]   [0.0, 10.0]
  [1.0, 0.0]   [1.0, 1.0]   [1.0, 2.0]      [1.0, 9.0]   [1.0, 10.0]
  [2.0, 0.0]   [2.0, 1.0]   [2.0, 2.0]      [2.0, 9.0]   [2.0, 10.0]

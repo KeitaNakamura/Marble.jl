@@ -235,9 +235,9 @@ end
 getkernelfunction(x::BSplineValues) = x.F
 
 node_position(ax::Vector, i::Int) = i - ifelse(2i<length(ax), firstindex(ax), lastindex(ax))
-node_position(grid::Grid{dim}, index::Index{dim}) where {dim} = map(node_position, gridaxes(grid), Tuple(index.I))
+node_position(grid::Grid, index::Index) = map(node_position, gridaxes(grid), Tuple(index.I))
 
-function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, xp::Vec{dim}, spat::AbstractArray{Bool, dim}) where {dim}
+function update!(mpvalues::BSplineValues, grid::Grid, xp::Vec, spat::AbstractArray{Bool})
     # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)

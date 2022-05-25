@@ -119,7 +119,7 @@ end
 
 getkernelfunction(x::GIMPValues) = x.F
 
-function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, pt, spat::AbstractArray{Bool, dim}) where {dim}
+function update!(mpvalues::GIMPValues, grid::Grid, pt, spat::AbstractArray{Bool})
     # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)

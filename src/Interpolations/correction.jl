@@ -39,7 +39,7 @@ end
 
 getkernelfunction(c::KernelCorrectionValues) = getkernelfunction(c.F)
 
-function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{dim}, pt, spat::AbstractArray{Bool, dim}) where {dim, T}
+function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{<: Any, dim}, pt, spat::AbstractArray{Bool, dim}) where {dim, T}
     # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)

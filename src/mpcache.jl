@@ -7,7 +7,7 @@ struct MPCache{dim, T, Tmp <: MPValues{dim, T}}
 end
 
 # constructors
-function MPCache(grid::Grid{dim, T}, xₚ::AbstractVector{<: Vec{dim}}) where {dim, T}
+function MPCache(grid::Grid{T, dim}, xₚ::AbstractVector{<: Vec{dim}}) where {dim, T}
     check_interpolation(grid)
     npoints = length(xₚ)
     mpvalues = [MPValues{dim, T}(grid.interpolation) for _ in 1:npoints]

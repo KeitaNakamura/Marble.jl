@@ -5,18 +5,17 @@ end
 
 @testset "Grid" begin
     # constructors
-    @test @inferred(Grid(0:10))::Grid{1, Float64} == Vec.(0:10)
-    @test @inferred(Grid(0:10, 0:20))::Grid{2, Float64} == Vec.(collect(Iterators.product(0:10, 0:20)))
-    @test @inferred(Grid(0:10, 0:20, 0:30))::Grid{3, Float64} == Vec.(collect(Iterators.product(0:10, 0:20, 0:30)))
-    @test @inferred(Grid(LinearBSpline(), 0:10))::Grid{1, Float64} == Grid(0:10)
-    @test @inferred(Grid(LinearBSpline(), 0:10, 0:20))::Grid{2, Float64} == Grid(0:10, 0:20)
-    @test @inferred(Grid(LinearBSpline(), 0:10, 0:20, 0:30))::Grid{3, Float64} == Grid(0:10, 0:20, 0:30)
-    @test_throws MethodError Grid(NodeState, 0:10)
-    @test_throws MethodError Grid(NodeState, 0:10, 0:20)
-    @test_throws MethodError Grid(NodeState, 0:10, 0:20, 0:30)
-    @test @inferred(Grid(NodeState, LinearWLS(LinearBSpline()), 0:10))::Grid{1, Float64} == Grid(0:10)
-    @test @inferred(Grid(NodeState, LinearWLS(LinearBSpline()), 0:10, 0:20))::Grid{2, Float64} == Grid(0:10, 0:20)
-    @test @inferred(Grid(NodeState, LinearWLS(LinearBSpline()), 0:10, 0:20, 0:30))::Grid{3, Float64} == Grid(0:10, 0:20, 0:30)
+    for T in (Float32, Float64)
+        for axs in ((0:10,), (0:10, 0:20), (0:10, 0:20, 0:30))
+            @test (@inferred Grid(axs...))::Grid{Float64, length(axs)} == Vec.(collect(Iterators.product(axs...)))
+            @test (@inferred Grid(LinearBSpline(), axs...))::Grid{Float64, length(axs)} == Grid(axs)
+            @test (@inferred Grid(NodeState, LinearWLS(LinearBSpline()), axs...))::Grid{Float64, length(axs)} == Grid(axs)
+            @test (@inferred Grid{T}(axs...))::Grid{T, length(axs)} == Vec.(collect(Iterators.product(axs...)))
+            @test (@inferred Grid{T}(LinearBSpline(), axs...))::Grid{T, length(axs)} == Grid(axs)
+            @test (@inferred Grid{T}(NodeState, LinearWLS(LinearBSpline()), axs...))::Grid{T, length(axs)} == Grid(axs)
+            @test_throws MethodError Grid(NodeState, axs...) # should give interpolation
+        end
+    end
 
     # gridsteps/gridaxes/gridorigin
     grid = Grid(CubicBSpline(), 0:1.0:10, 1:2.0:20)

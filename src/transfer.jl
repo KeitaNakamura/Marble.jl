@@ -104,7 +104,7 @@ function (::P2G_AffinePIC)(grid::Grid, pointstate, cache::MPCache, dt::Real)
     grid
 end
 
-function (::P2G_Taylor)(grid::Grid{dim}, pointstate, cache::MPCache{dim}, dt::Real) where {dim}
+function (::P2G_Taylor)(grid::Grid{<: Any, dim}, pointstate, cache::MPCache{dim}, dt::Real) where {dim}
     point_to_grid!((grid.state.m, grid.state.v_n, grid.state.v), cache) do mp, p, i
         @_inline_propagate_inbounds_meta
         N = mp.N
@@ -238,7 +238,7 @@ function (::G2P_AffinePIC)(pointstate, grid::Grid, cache::MPCache, dt::Real)
     pointstate
 end
 
-function (::G2P_WLS)(pointstate, grid::Grid{dim}, cache::MPCache, dt::Real) where {dim}
+function (::G2P_WLS)(pointstate, grid::Grid{<: Any, dim}, cache::MPCache, dt::Real) where {dim}
     P = getbasisfunction(grid.interpolation)
     p0 = value(P, zero(Vec{dim, Int}))
     ∇p0 = gradient(P, zero(Vec{dim, Int}))

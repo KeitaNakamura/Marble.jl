@@ -93,7 +93,7 @@ end
 
 # fast version for `LinearWLS(BSpline{order}())`
 # can't use `xp` as argument for correct dispatch
-function update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, grid::Grid{dim}, pt, spat::AbstractArray{Bool, dim}) where {dim, T}
+function update!(mpvalues::WLSValues{PolynomialBasis{1}, <: BSpline, dim, T}, grid::Grid{<: Any, dim}, pt, spat::AbstractArray{Bool, dim}) where {dim, T}
     # reset
     fillzero!(mpvalues.N)
     fillzero!(mpvalues.∇N)

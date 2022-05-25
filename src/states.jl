@@ -38,7 +38,7 @@ default_pointstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = 
 default_pointstate_type(::LinearWLS, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultPointState{dim, T, dim+1, dim*(dim+1)}
 default_pointstate_type(::BilinearWLS, ::Val{2}, ::Val{T}) where {T} = DefaultPointState{2, T, 4, 8}
 
-function generate_pointstate(indomain, Point::Type, grid::Grid{dim, T}; n::Int = 2) where {dim, T}
+function generate_pointstate(indomain, Point::Type, grid::Grid{T, dim}; n::Int = 2) where {dim, T}
     h = gridsteps(grid) ./ n # length per particle
     allpoints = Grid(@. LinRange(
         first($gridaxes(grid)) + h/2,
@@ -77,7 +77,7 @@ function generate_pointstate(indomain, Point::Type, grid::Grid{dim, T}; n::Int =
     pointstate
 end
 
-function generate_pointstate(indomain, grid::Grid{dim, T}; kwargs...) where {dim, T}
+function generate_pointstate(indomain, grid::Grid{T, dim}; kwargs...) where {dim, T}
     Point = default_pointstate_type(grid.interpolation, Val(dim), Val(T))
     generate_pointstate(indomain, Point, grid; kwargs...)
 end
