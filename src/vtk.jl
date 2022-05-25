@@ -77,7 +77,7 @@ end
 function defalut_output_paraview_initialize(file)
     paraview_collection(vtk_save, file)
 end
-function defalut_output_paraview_append(file, grid, pointstate, t, index; output_grid = false, compress = false)
+function defalut_output_paraview_append(file, grid, pointstate, t, index; output_grid = false, compress = true)
     paraview_collection(file, append = true) do pvd
         vtk_multiblock(string(file, index)) do vtm
             vtk_points(vtm, pointstate.x; compress) do vtk

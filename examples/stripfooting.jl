@@ -129,7 +129,6 @@ function stripfooting(
                 t,
                 logindex(logger);
                 output_grid = true,
-                compress = true,
             )
         end
     end
