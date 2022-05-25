@@ -53,13 +53,6 @@ export
     logindex,
 # VTK
     vtk_points,
-# async
-    AsyncScheduler,
-    currenttime,
-    issynced,
-    synced_pointstate,
-    updatetimestep!,
-    asyncstep!,
 # dot macros
     @dot_threads,
     @dot_lazy
@@ -85,8 +78,6 @@ include("states.jl")
 include("mpcache.jl")
 include("transfer.jl")
 include("contact_mechanics.jl")
-
-include("async.jl")
 
 include("logger.jl")
 include("vtk.jl")
