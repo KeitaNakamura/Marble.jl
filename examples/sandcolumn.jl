@@ -58,10 +58,10 @@ function sandcolumn(
 
         # boundary conditions
         @inbounds for (I,n) in boundaries(grid, "-y") # bottom
-            grid.state.v[I] += contacted(ContactMohrCoulomb(μ = 0.2), grid.state.v[I], n)
+            grid.state.v[I] += contacted(CoulombFriction(μ = 0.2), grid.state.v[I], n)
         end
         @inbounds for (I,n) in boundaries(grid, "-x", "+x") # left and right
-            grid.state.v[I] += contacted(ContactMohrCoulomb(μ = 0), grid.state.v[I], n)
+            grid.state.v[I] += contacted(CoulombFriction(μ = 0), grid.state.v[I], n)
         end
 
         transfer.grid_to_point!(pointstate, grid, cache, dt)

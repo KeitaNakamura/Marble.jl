@@ -44,7 +44,7 @@ export
 # Transfer
     Transfer,
 # Frictional contact
-    ContactMohrCoulomb,
+    CoulombFriction,
     contacted,
 # Logger
     Logger,

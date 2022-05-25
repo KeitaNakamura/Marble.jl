@@ -1,4 +1,4 @@
-struct ContactMohrCoulomb
+struct CoulombFriction
     μ::Float64
     ϕ::Float64
     c::Float64
@@ -6,7 +6,7 @@ struct ContactMohrCoulomb
 end
 
 """
-    ContactMohrCoulomb(; parameters...)
+    CoulombFriction(; parameters...)
 
 Frictional contact using Mohr-Coulomb criterion.
 
@@ -18,36 +18,36 @@ Frictional contact using Mohr-Coulomb criterion.
 
 If `separation` is `true`, continuum body can leave from the boundary surface.
 """
-function ContactMohrCoulomb(; μ::Union{Real, Nothing} = nothing, ϕ::Union{Real, Nothing} = nothing, c::Real = 0, separation::Bool = false)
+function CoulombFriction(; μ::Union{Real, Nothing} = nothing, ϕ::Union{Real, Nothing} = nothing, c::Real = 0, separation::Bool = false)
     ( isnothing(μ) &&  isnothing(ϕ)) && throw(ArgumentError("both `μ` and `ϕ` are not found"))
     (!isnothing(μ) && !isnothing(ϕ)) && throw(ArgumentError("both `μ` and `ϕ` are used, choose only one parameter"))
     isnothing(ϕ) && (ϕ = atan(μ))
     isnothing(μ) && (μ =  tan(ϕ))
-    ContactMohrCoulomb(μ, ϕ, c, separation)
+    CoulombFriction(μ, ϕ, c, separation)
 end
 
 """
-    ContactMohrCoulomb(:sticky)
+    CoulombFriction(:sticky)
 
-This is the same as the `ContactMohrCoulomb(; μ = Inf, separation = false)`.
+This is the same as the `CoulombFriction(; μ = Inf, separation = false)`.
 
 ---
 
-    ContactMohrCoulomb(:slip; separation = false)
+    CoulombFriction(:slip; separation = false)
 
-This is the same as the `ContactMohrCoulomb(; μ = 0, separation = false)`.
+This is the same as the `CoulombFriction(; μ = 0, separation = false)`.
 """
-function ContactMohrCoulomb(cond::Symbol; separation = false)
-    cond == :sticky && return ContactMohrCoulomb(; μ = Inf, separation = false)
-    cond == :slip   && return ContactMohrCoulomb(; μ = 0, separation)
+function CoulombFriction(cond::Symbol; separation = false)
+    cond == :sticky && return CoulombFriction(; μ = Inf, separation = false)
+    cond == :slip   && return CoulombFriction(; μ = 0, separation)
     throw(ArgumentError("Use `:sticky` or `:slip` for contact condition"))
 end
 
-issticky(cond::ContactMohrCoulomb) = isinf(cond.μ) && !cond.separation
-isslip(cond::ContactMohrCoulomb) = iszero(cond.μ) && iszero(cond.c)
+issticky(cond::CoulombFriction) = isinf(cond.μ) && !cond.separation
+isslip(cond::CoulombFriction) = iszero(cond.μ) && iszero(cond.c)
 
 """
-    contacted(::ContactMohrCoulomb, v::Vec, n::Vec)
+    contacted(::CoulombFriction, v::Vec, n::Vec)
 
 Compute velocity `v` caused by contact.
 The other quantities, which are equivalent to velocity such as momentum and force, are also available.
@@ -55,7 +55,7 @@ The other quantities, which are equivalent to velocity such as momentum and forc
 
 # Examples
 ```jldoctest
-julia> cond = ContactMohrCoulomb(:slip, separation = false);
+julia> cond = CoulombFriction(:slip, separation = false);
 
 julia> v = Vec(1.0, -1.0); n = Vec(0.0, 1.0);
 
@@ -65,7 +65,7 @@ julia> v + contacted(cond, v, n)
  0.0
 ```
 """
-function contacted(cond::ContactMohrCoulomb, v::Vec{dim, T}, n::Union{Vec{dim, T}, Vec{dim, Int}})::Vec{dim, T} where {dim, T}
+function contacted(cond::CoulombFriction, v::Vec{dim, T}, n::Union{Vec{dim, T}, Vec{dim, Int}})::Vec{dim, T} where {dim, T}
     v_sticky = -v # contact force for sticky contact
     issticky(cond) && return v_sticky
     d = v_sticky ⋅ n
@@ -81,6 +81,6 @@ function contacted(cond::ContactMohrCoulomb, v::Vec{dim, T}, n::Union{Vec{dim, T
     end
 end
 
-function contacted(cond::ContactMohrCoulomb, v::Vec, n::Vec)
+function contacted(cond::CoulombFriction, v::Vec, n::Vec)
     contacted(cond, promote(v, n)...)
 end

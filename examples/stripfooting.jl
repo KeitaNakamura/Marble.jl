@@ -73,10 +73,10 @@ function stripfooting(
             grid.state.v[I] = v_footing
         end
         @inbounds for (I,n) in boundaries(grid, "-y") # bottom
-            grid.state.v[I] += contacted(ContactMohrCoulomb(:sticky), grid.state.v[I], n)
+            grid.state.v[I] += contacted(CoulombFriction(:sticky), grid.state.v[I], n)
         end
         @inbounds for (I,n) in boundaries(grid, "-x", "+x") # left and right
-            grid.state.v[I] += contacted(ContactMohrCoulomb(:slip), grid.state.v[I], n)
+            grid.state.v[I] += contacted(CoulombFriction(:slip), grid.state.v[I], n)
         end
 
         transfer.grid_to_point!(pointstate, grid, cache, dt)
