@@ -13,6 +13,9 @@ using StaticArrays, StructArrays
 const BLOCK_UNIT = unsigned(3) # 2^3
 
 export
+# dot macros
+    @dot_threads,
+    @dot_lazy,
 # coordinate system
     CoordinateSystem,
     PlaneStrain,
@@ -57,17 +60,13 @@ export
     islogpoint,
     logindex,
 # VTK
-    vtk_points,
-# dot macros
-    @dot_threads,
-    @dot_lazy
+    vtk_points
 
 
 include("utils.jl")
 include("dotmacros.jl")
-
-include("coordinate_system.jl")
 include("sparray.jl")
+include("misc.jl")
 
 abstract type Interpolation end
 include("grid.jl")
