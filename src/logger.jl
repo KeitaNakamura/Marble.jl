@@ -7,7 +7,7 @@ const PROGRESS_METER_MAX = 10000
 mutable struct Logger
     # log
     logpoints::Vector{Float64}
-    i::Int
+    index::Int
     islogpoint::Bool
     # progress
     prog::Progress
@@ -34,7 +34,7 @@ t_start(log::Logger) = first(logpoints(log))
 t_stop(log::Logger) = last(logpoints(log))
 
 logpoints(logger::Logger) = logger.logpoints
-logindex(logger::Logger) = logger.i
+logindex(logger::Logger) = logger.index
 islogpoint(logger::Logger) = logger.islogpoint
 
 function isfinised(logger::Logger, t::Real)
@@ -91,8 +91,8 @@ function update!(logger::Logger, t::Real; print = nothing)
     end
 
     i = searchsortedlast(logpoints(logger), t) - 1
-    if logger.i < i # not yet logged
-        logger.i = i
+    if logger.index < i # not yet logged
+        logger.index = i
         logger.islogpoint = true
     else
         logger.islogpoint = false
