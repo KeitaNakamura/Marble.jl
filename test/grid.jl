@@ -28,14 +28,11 @@ end
     @test @inferred(gridaxes(grid, 2)) == 1:2.0:20
     @test @inferred(gridorigin(grid))::Vec{2} == Vec(0,1)
 
-    # neighboring_nodes/neighboring_cells/whichcell/whichblock
+    # neighboring_nodes/whichcell/whichblock
     @test @inferred(Metale.neighboring_nodes(grid, Vec(0.6, 8.8), 1))::CartesianIndices == CartesianIndices((1:2, 4:5))
     @test @inferred(Metale.neighboring_nodes(grid, Vec(0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:3, 3:6))
     @test @inferred(Metale.neighboring_nodes(grid, Vec(-0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:0, 1:0))
     @test @inferred(Metale.neighboring_nodes(grid, Vec(0.6, 8.8), Vec(1,2)))::CartesianIndices == CartesianIndices((1:2, 3:6))
-    @test @inferred(Metale.neighboring_cells(grid, Vec(0.6, 8.8), 1))::CartesianIndices == CartesianIndices((1:2, 3:5))
-    @test @inferred(Metale.neighboring_cells(grid, Vec(0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:3, 2:6))
-    @test_throws BoundsError Metale.neighboring_cells(grid, CartesianIndex(11, 9), 1)
     @test @inferred(Metale.neighboring_blocks(grid, Vec(8.8, 4.6), 1))::CartesianIndices == CartesianIndices((1:2, 1:2))
     @test @inferred(Metale.neighboring_blocks(grid, Vec(8.8, 4.6), 2))::CartesianIndices == CartesianIndices((1:2, 1:2))
     @test_throws BoundsError Metale.neighboring_blocks(grid, CartesianIndex(3, 1), 1)

@@ -115,56 +115,12 @@ end
     CartesianIndices(@. UnitRange(imin, imax))
 end
 
-
-"""
-    Metale.neighboring_cells(grid, x::Vec, h::Int)
-    Metale.neighboring_cells(grid, cellindex::CartesianIndex, h::Int)
-
-Return `CartesianIndices` storing neighboring cell indices around `x`.
-`h` is number of outer cells around cell where `x` locates.
-In 1D, for example, the searching range becomes `x ± h*dx`.
-
-# Examples
-```jldoctest
-julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{2, Float64, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
- [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
- [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
- [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
- [3.0, 0.0]  [3.0, 1.0]  [3.0, 2.0]  [3.0, 3.0]  [3.0, 4.0]  [3.0, 5.0]
- [4.0, 0.0]  [4.0, 1.0]  [4.0, 2.0]  [4.0, 3.0]  [4.0, 4.0]  [4.0, 5.0]
- [5.0, 0.0]  [5.0, 1.0]  [5.0, 2.0]  [5.0, 3.0]  [5.0, 4.0]  [5.0, 5.0]
-
-julia> x = Vec(1.5, 1.5);
-
-julia> Metale.neighboring_cells(grid, x, 1)
-3×3 CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}:
- CartesianIndex(1, 1)  CartesianIndex(1, 2)  CartesianIndex(1, 3)
- CartesianIndex(2, 1)  CartesianIndex(2, 2)  CartesianIndex(2, 3)
- CartesianIndex(3, 1)  CartesianIndex(3, 2)  CartesianIndex(3, 3)
-
-julia> Metale.neighboring_cells(grid, Metale.whichcell(grid, x), 1) == ans
-true
-```
-"""
-function neighboring_cells(grid::Grid{dim}, cellindex::CartesianIndex{dim}, h::Int) where {dim}
-    inds = CartesianIndices(size(grid) .- 1)
-    @boundscheck checkbounds(inds, cellindex)
-    u = oneunit(cellindex)
-    inds ∩ (cellindex-h*u:cellindex+h*u)
-end
-
-@inline function neighboring_cells(grid::Grid, x::Vec, h::Int)
-    neighboring_cells(grid, whichcell(grid, x), h)
-end
-
 function neighboring_blocks(grid::Grid{dim}, blockindex::CartesianIndex{dim}, h::Int) where {dim}
     inds = CartesianIndices(blocksize(grid))
     @boundscheck checkbounds(inds, blockindex)
     u = oneunit(blockindex)
     inds ∩ (blockindex-h*u:blockindex+h*u)
 end
-
 @inline function neighboring_blocks(grid::Grid, x::Vec, h::Int)
     neighboring_blocks(grid, whichblock(grid, x), h)
 end
