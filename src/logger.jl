@@ -18,7 +18,7 @@ mutable struct Logger
     nlines::Int
 end
 
-function Logger(start::Real, stop::Real, step::Real; showprogress::Bool=false, color::Symbol=:yellow)
+function Logger(start::Real, stop::Real, step::Real; showprogress::Bool=true, color::Symbol=:yellow)
     @assert start < stop
     logpoints = collect(start:step:stop)
     last(logpoints) < stop && push!(logpoints, stop)
@@ -48,6 +48,7 @@ function progress_int(logger::Logger, t::Real)
     floor(Int, PROGRESS_METER_MAX * ((t - t0) / (t1 - t0)))
 end
 
+# `showprogress` must be `true` to `print`
 function update!(logger::Logger, t::Real; print = nothing)
     if logger.showprogress
         if logindex(logger) == -1 # time stamp for start
