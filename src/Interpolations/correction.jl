@@ -3,7 +3,6 @@ end
 @pure KernelCorrection(k::Kernel) = KernelCorrection{typeof(k)}()
 
 @pure getkernelfunction(::KernelCorrection{K}) where {K} = K()
-getsupportlength(c::KernelCorrection, args...) = getsupportlength(getkernelfunction(c), args...)
 
 @inline function neighbornodes(x::KernelCorrection, grid::Grid, pt)
     neighbornodes(getkernelfunction(x), grid, pt)

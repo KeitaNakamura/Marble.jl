@@ -13,8 +13,6 @@ const BilinearWLS = WLS{BilinearBasis}
     neighbornodes(getkernelfunction(wls), grid, pt)
 end
 
-getsupportlength(wls::WLS, args...) = getsupportlength(getkernelfunction(wls), args...)
-
 
 struct WLSValue{dim, T, L, L²} <: MPValue
     N::T

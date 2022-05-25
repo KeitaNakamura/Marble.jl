@@ -1,6 +1,5 @@
 struct GIMP <: Kernel end
 
-getsupportlength(::GIMP, l) = 1.0 .+ l # `l` must be normalized by `dx`
 @pure getnnodes(f::GIMP, ::Val{dim}) where {dim} = prod(nfill(3, Val(dim)))
 
 @inline function neighbornodes(f::GIMP, grid::Grid, xp::Vec, rp::Vec)
