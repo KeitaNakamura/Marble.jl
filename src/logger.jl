@@ -1,6 +1,6 @@
 import Dates
 import ProgressMeter
-import ProgressMeter: Progress, BarGlyphs
+import ProgressMeter: Progress
 
 const PROGRESS_METER_MAX = 10000
 
@@ -24,7 +24,6 @@ function Logger(start::Real, stop::Real, step::Real; showprogress::Bool=true, co
     last(logpoints) < stop && push!(logpoints, stop)
     prog = Progress(
         PROGRESS_METER_MAX;
-        barglyphs = BarGlyphs('|', '█', ['▁' ,'▂' ,'▃' ,'▄' ,'▅' ,'▆', '▇'], ' ', '|'),
         barlen = 20,
         color,
     )
