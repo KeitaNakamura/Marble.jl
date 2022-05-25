@@ -6,21 +6,21 @@ struct MPCache{dim, T, Tmp <: MPValues{dim, T}}
     spat::Array{Bool, dim}
 end
 
+# constructors
 function MPCache(grid::Grid{dim, T}, xₚ::AbstractVector{<: Vec{dim}}) where {dim, T}
     check_interpolation(grid)
     npoints = length(xₚ)
     mpvalues = [MPValues{dim, T}(grid.interpolation) for _ in 1:npoints]
     MPCache(mpvalues, size(grid), Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
 end
+MPCache(grid::Grid, pointstate::AbstractVector) = MPCache(grid, pointstate.x)
 
-function MPCache(grid::Grid, pointstate::AbstractVector)
-    MPCache(grid, pointstate.x)
-end
-
+# helper functions
 gridsize(cache::MPCache) = cache.gridsize
 npoints(cache::MPCache) = cache.npoints[]
 pointsinblock(cache::MPCache) = cache.pointsinblock
 
+# reorder_pointstate!
 function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
     @assert length(pointstate) == sum(length, ptsinblk)
     inds = Vector{Int}(undef, length(pointstate))
@@ -38,20 +38,9 @@ function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
     @inbounds @. pointstate = pointstate[inds]
     pointstate
 end
-reorder_pointstate!(pointstate::AbstractVector, grid::Grid) = reorder_pointstate!(pointstate, pointsinblock(grid, pointstate.x))
 reorder_pointstate!(pointstate::AbstractVector, cache::MPCache) = reorder_pointstate!(pointstate, pointsinblock(cache))
 
-function allocate!(f, x::Vector, n::Integer)
-    len = length(x)
-    if n > len # growend
-        resize!(x, n)
-        @simd for i in len+1:n
-            @inbounds x[i] = f(i)
-        end
-    end
-    x
-end
-
+# pointsinblock!
 function pointsinblock!(ptsinblk::AbstractArray{Vector{Int}}, grid::Grid, xₚ::AbstractVector)
     empty!.(ptsinblk)
     @inbounds for p in 1:length(xₚ)
@@ -91,6 +80,17 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, pointstate::AbstractVe
         end
     end
     spat
+end
+
+function allocate!(f, x::Vector, n::Integer)
+    len = length(x)
+    if n > len # growend
+        resize!(x, n)
+        @simd for i in len+1:n
+            @inbounds x[i] = f(i)
+        end
+    end
+    x
 end
 
 function update!(cache::MPCache, grid::Grid, pointstate; exclude::Union{Nothing, AbstractArray{Bool}} = nothing)

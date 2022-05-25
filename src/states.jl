@@ -73,7 +73,7 @@ function generate_pointstate(indomain, Point::Type, grid::Grid{dim, T}; n::Int =
         pointstate.index .= 1:npoints
     end
 
-    reorder_pointstate!(pointstate, grid)
+    reorder_pointstate!(pointstate, pointsinblock(grid, pointstate.x))
     pointstate
 end
 
