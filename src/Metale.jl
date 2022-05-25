@@ -43,6 +43,11 @@ export
     grid_to_point,
 # Transfer
     Transfer,
+    TransferNormalFLIP,
+    TransferNormalPIC,
+    TransferTaylorFLIP,
+    TransferTaylorPIC,
+    TransferAffinePIC,
 # Frictional contact
     CoulombFriction,
     contacted,
