@@ -70,30 +70,20 @@ function update!(mpvalues::KernelCorrectionValues{<: Any, dim, T}, grid::Grid{di
             mpvalues.N[i] = w
             mpvalues.∇N[i] = ∇w
         end
-        A⁻¹ = inv(A)
-        β = -(A⁻¹ ⋅ β)
-        A′⁻¹ = inv(A′)
-        β′ = -(A′⁻¹ ⋅ β′)
+        β = inv(A) ⋅ β
+        β′ = inv(A′) ⋅ β′
         α = zero(T)
         α′ = zero(Mat{dim, dim, T})
         @inbounds @simd for i in 1:length(mpvalues)
             I = gridindices(mpvalues, i)
             xi = grid[I]
-            w = mpvalues.N[i]
-            ∇w = mpvalues.∇N[i]
-            α += w * (1 + β ⋅ (xi - xp))
-            α′ += (xi ⊗ ∇w) * (1 + β′ ⋅ (xi - xp))
+            mpvalues.N[i] *= 1 + β ⋅ (xp - xi)
+            mpvalues.∇N[i] *= 1 + β′ ⋅ (xp - xi)
+            α += mpvalues.N[i]
+            α′ += xi ⊗ mpvalues.∇N[i]
         end
-        α = inv(α)
-        α′ = inv(α′)
-        @inbounds @simd for i in 1:length(mpvalues)
-            I = gridindices(mpvalues, i)
-            xi = grid[I]
-            w = mpvalues.N[i]
-            ∇w = mpvalues.∇N[i]
-            mpvalues.N[i] = w * α * (1 + β ⋅ (xi - xp))
-            mpvalues.∇N[i] = ∇w ⋅ α′ * (1 + β′ ⋅ (xi - xp))
-        end
+        @. mpvalues.N = mpvalues.N * $inv(α)
+        @. mpvalues.∇N = mpvalues.∇N ⋅ $inv(α′)
     end
 
     mpvalues
