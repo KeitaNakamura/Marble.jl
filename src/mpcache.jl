@@ -75,7 +75,7 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, 
     for blocks in threadsafe_blocks(size(grid))
         Threads.@threads for blockindex in blocks
             for p in ptsinblk[blockindex]
-                inds = neighboring_nodes(grid, xₚ[p], hₚ[p])
+                inds = neighbornodes(grid, xₚ[p], hₚ[p])
                 @inbounds spat[inds] .= true
             end
         end
@@ -85,7 +85,7 @@ function sparsity_pattern!(spat::Array{Bool}, grid::Grid, xₚ::AbstractVector, 
         for blocks in threadsafe_blocks(size(grid))
             Threads.@threads for blockindex in blocks
                 for p in ptsinblk[blockindex]
-                    inds = neighboring_nodes(grid, xₚ[p], 1)
+                    inds = neighbornodes(grid, xₚ[p], 1)
                     @inbounds spat[inds] .= true
                 end
             end

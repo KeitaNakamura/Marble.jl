@@ -76,7 +76,7 @@ function updatetimestep!(calculate_timestep::Function, sch::AsyncScheduler, grid
         temp = copy(nearsurface)
         @inbounds for I in CartesianIndices(blocks)
             if temp[I]
-                for J in neighboring_blocks(grid, I, 1)
+                for J in neighborblocks(grid, I, 1)
                     nearsurface[J] = true
                 end
             end
@@ -126,7 +126,7 @@ function updatetimestep!(calculate_timestep::Function, sch::AsyncScheduler, grid
         block = blocks[I]
         block.dT == dTmin && continue
         Tmin_local = 1//0
-        for J in neighboring_blocks(grid, I, 1)
+        for J in neighborblocks(grid, I, 1)
             block_nearby = blocks[J]
             Tmin_local = min(Tmin_local, block_nearby.T + block_nearby.dT)
         end
@@ -148,7 +148,7 @@ function advance!(microstep::Function, sch::AsyncScheduler, grid::Grid, dT::Rati
         if block.dT == dT
             @assert block.T == time.T
             mask_equal[I] = true
-            for J in neighboring_blocks(grid, I, 1)
+            for J in neighborblocks(grid, I, 1)
                 block_nearby = blocks[J]
                 if block_nearby.dT > block.dT
                     @assert block.T == block_nearby.T_buffer

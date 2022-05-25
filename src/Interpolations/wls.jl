@@ -9,8 +9,8 @@ const BilinearWLS = WLS{BilinearBasis}
 @pure getbasisfunction(::WLS{B}) where {B} = B()
 @pure getkernelfunction(::WLS{B, W}) where {B, W} = W()
 
-@inline function neighboring_nodes(wls::WLS, grid::Grid, pt)
-    neighboring_nodes(getkernelfunction(wls), grid, pt)
+@inline function neighbornodes(wls::WLS, grid::Grid, pt)
+    neighbornodes(getkernelfunction(wls), grid, pt)
 end
 
 getsupportlength(wls::WLS, args...) = getsupportlength(getkernelfunction(wls), args...)
@@ -148,12 +148,12 @@ end
 
 function update!(mpvalues::WLSValues, grid::Grid, xp::Vec, spat::AbstractArray{Bool})
     F = getkernelfunction(mpvalues)
-    _update!(mpvalues, grid, xp, spat, neighboring_nodes(F, grid, xp))
+    _update!(mpvalues, grid, xp, spat, neighbornodes(F, grid, xp))
 end
 
 function update!(mpvalues::WLSValues{<: Any, GIMP}, grid::Grid, xp::Vec, r::Vec, spat::AbstractArray{Bool})
     F = getkernelfunction(mpvalues)
-    _update!(mpvalues, grid, xp, spat, neighboring_nodes(F, grid, xp, r), r)
+    _update!(mpvalues, grid, xp, spat, neighbornodes(F, grid, xp, r), r)
 end
 
 @inline function Base.getindex(mpvalues::WLSValues, i::Int)
