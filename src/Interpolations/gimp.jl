@@ -3,6 +3,12 @@ struct GIMP <: Kernel end
 getsupportlength(::GIMP, l) = 1.0 .+ l # `l` must be normalized by `dx`
 @pure getnnodes(f::GIMP, ::Val{dim}) where {dim} = prod(nfill(3, Val(dim)))
 
+@inline function neighboring_nodes(f::GIMP, grid::Grid, xp::Vec, rp::Vec)
+    dx⁻¹ = gridsteps_inv(grid)
+    neighboring_nodes(grid, xp, 1 .+ rp.*dx⁻¹)
+end
+@inline neighboring_nodes(f::GIMP, grid::Grid, pt) = neighboring_nodes(f, grid, pt.x, pt.r)
+
 # simple GIMP calculation
 # See Eq.(40) in
 # Bardenhagen, S. G., & Kober, E. M. (2004).
@@ -118,7 +124,7 @@ function update!(mpvalues::GIMPValues{dim}, grid::Grid{dim}, xp::Vec{dim}, r::Ve
     # update
     mpvalues.xp = xp
     dx⁻¹ = gridsteps_inv(grid)
-    update_active_gridindices!(mpvalues, neighboring_nodes(grid, xp, getsupportlength(F, r .* dx⁻¹)), spat)
+    update_active_gridindices!(mpvalues, neighboring_nodes(F, grid, xp, r), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
         mpvalues.N[i], mpvalues.∇N[i] = value_gradient(F, grid, I, xp, r)

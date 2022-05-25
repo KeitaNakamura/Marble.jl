@@ -34,6 +34,11 @@ getsupportlength(::BSpline{4}) = 2.5
     (2*getsupportlength(bspline))^dim
 end
 
+@inline function neighboring_nodes(bsp::BSpline, grid::Grid, x::Vec)
+    neighboring_nodes(grid, x, getsupportlength(bsp))
+end
+@inline neighboring_nodes(bsp::BSpline, grid::Grid, pt) = neighboring_nodes(bsp, grid, pt.x)
+
 # simple B-spline calculations
 function value(::BSpline{1}, ξ::Real)
     ξ = abs(ξ)
@@ -235,7 +240,7 @@ function update!(mpvalues::BSplineValues{<: Any, dim}, grid::Grid{dim}, xp::Vec{
 
     # update
     mpvalues.xp = xp
-    update_active_gridindices!(mpvalues, neighboring_nodes(grid, xp, getsupportlength(F)), spat)
+    update_active_gridindices!(mpvalues, neighboring_nodes(F, grid, xp), spat)
     @inbounds @simd for i in 1:length(mpvalues)
         I = gridindices(mpvalues, i)
         mpvalues.N[i], mpvalues.∇N[i] = value_gradient(F, grid, I, xp, :open_knot)
