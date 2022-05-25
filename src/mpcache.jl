@@ -137,7 +137,7 @@ function point_to_grid!(p2g, gridstates, mps::MPValues)
     @_inline_propagate_inbounds_meta
     @simd for i in 1:length(mps)
         I = gridindices(mps, i)
-        maptuple(unsafe_add!, gridstates, I, p2g(mps[i], I))
+        maptuple(add!, gridstates, p2g(mps[i], I), I)
     end
 end
 

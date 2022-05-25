@@ -68,16 +68,17 @@ end
     x
 end
 
-@inline function unsafe_add!(x::SpArray, i, v)
+@inline function add!(x::SpArray, v, i)
     @boundscheck checkbounds(x, i)
     spat = x.spat
     @inbounds begin
         index = spat.indices[i]
-        x.data[index] += v # don't check if `index == -1`
+        index === -1 && return x
+        x.data[index] += v
     end
     x
 end
-@inline function unsafe_add!(x::AbstractArray, i, v)
+@inline function add!(x::AbstractArray, v, i)
     @boundscheck checkbounds(x, i)
     @inbounds x[i] += v
     x
