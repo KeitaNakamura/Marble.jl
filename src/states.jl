@@ -12,13 +12,12 @@ end
 
 default_nodestate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultNodalState{dim, T, dim+1, (dim+1)*(dim+1)}
 
-
-default_pointstate_type(::Nothing, ::Val{dim}, ::Val{T}) where {dim, T} =
-    @NamedTuple{x::Vec{dim, T}, V::T, r::Vec{dim, T}, index::Int}
-
 ################
 # Point states #
 ################
+
+default_pointstate_type(::Nothing, ::Val{dim}, ::Val{T}) where {dim, T} =
+    @NamedTuple{x::Vec{dim, T}, V::T, r::Vec{dim, T}, index::Int}
 
 struct DefaultPointState{dim, T, L, dim_L}
     m::T
