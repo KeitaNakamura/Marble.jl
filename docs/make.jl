@@ -16,7 +16,7 @@ makedocs(;
         "Home" => "index.md",
         "Grid" => "grid.md",
         "Interpolations" => "interpolations.md",
-        "ContactMechanics" => "contact_mechanics.md",
+        "Contact mechanics" => "contact_mechanics.md",
         "VTK outputs" => "VTK_outputs.md",
     ],
     doctest = true, # :fix

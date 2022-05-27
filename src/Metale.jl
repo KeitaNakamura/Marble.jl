@@ -81,7 +81,7 @@ include("Interpolations/correction.jl")
 include("states.jl")
 include("mpcache.jl")
 include("transfer.jl")
-include("contact_mechanics.jl")
+include("contact.jl")
 
 include("logger.jl")
 include("vtk.jl")

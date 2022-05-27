@@ -47,10 +47,10 @@ issticky(cond::CoulombFriction) = isinf(cond.μ) && !cond.separation
 isslip(cond::CoulombFriction) = iszero(cond.μ) && iszero(cond.c)
 
 """
-    contacted(::CoulombFriction, v::Vec, n::Vec)
+    contacted(::CoulombFriction, q::Vec, n::Vec)
 
-Compute velocity `v` caused by contact.
-The other quantities, which are equivalent to velocity such as momentum and force, are also available.
+Compute `q` caused by contact.
+`q` can be used as velocity (relative velocity) `v` or force `f`.
 `n` is the unit vector normal to the surface.
 
 # Examples
@@ -65,20 +65,34 @@ julia> v + contacted(cond, v, n)
  0.0
 ```
 """
-function contacted(cond::CoulombFriction, v::Vec{dim, T}, n::Union{Vec{dim, T}, Vec{dim, Int}})::Vec{dim, T} where {dim, T}
-    v_sticky = -v # contact force for sticky contact
-    issticky(cond) && return v_sticky
-    d = v_sticky ⋅ n
-    vn = d * n
-    isslip(cond) && return ifelse(d > 0 || !cond.separation, vn, zero(vn))
-    vt = v_sticky - vn
-    if d > 0
+function contacted(cond::CoulombFriction, q::Vec{dim, T}, n::Vec{dim, T})::Vec{dim, T} where {dim, T}
+    # `q` can be used as velocity `v` or force `f`
+    # use the relative velocity when using `q` as velocity.
+
+    # Sticky: leaving is also not allowed like chewing gum
+    # so just apply `q` with opposite direction
+    q_sticky = -q
+    issticky(cond) && return q_sticky
+
+    # normal component of `q` to surface
+    # `q_norm < 0` means the object is leaving from the surface
+    # so applying negative `q_norm` should not be allowed when `cond.separation == true`
+    q_norm = q_sticky ⋅ n
+    q_norm = ifelse(cond.separation, max(0, q_norm), q_norm)
+    q_n = q_norm * n
+
+    # Slip
+    # don't need to consider tangent component
+    isslip(cond) && return q_n
+
+    # Friction
+    if q_norm > 0 # friction force should be considered
+        q_t = q_sticky - q_n
         μ = T(cond.μ)
         c = T(cond.c)
-        return vn + min(1, (c + μ*norm(vn))/norm(vt)) * vt # put `norm(vt)` inside of `min` to handle with deviding zero
-    else
-        return ifelse(!cond.separation, vn, zero(vn))
+        return q_n + min(1, (c + μ*norm(q_n))/norm(q_t)) * q_t # put `norm(q_t)` inside of `min` to handle with deviding zero
     end
+    q_n
 end
 
 function contacted(cond::CoulombFriction, v::Vec, n::Vec)

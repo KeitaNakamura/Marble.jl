@@ -12,5 +12,5 @@ Pages = ["contact_mechanics.md"]
 ```@autodocs
 Modules = [Metale]
 Order   = [:type, :function]
-Pages   = ["contact_mechanics.jl"]
+Pages   = ["contact.jl"]
 ```
