@@ -1,9 +1,7 @@
 module Metale
 
 using Base: @_inline_meta, @_propagate_inbounds_meta, @pure
-using Base.Cartesian: @ntuple, @nall
-
-using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, ArrayStyle, broadcasted, broadcastable, throwdm, preprocess
+using Base.Broadcast: Broadcasted, ArrayStyle, broadcasted
 
 using Reexport
 @reexport using Tensorial
