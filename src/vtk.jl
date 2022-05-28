@@ -64,7 +64,7 @@ end
 function vtk_format(x::AbstractVector{Vec{dim, T}}) where {dim, T}
     n = length(x)
     v = reinterpret(T, Array(x))
-    out = zeros(T, (dim == 2 ? 3 : dim), n)
+    out = zeros(T, ifelse(dim==2, 3, dim), n)
     out[1:dim, :] .= reshape(v, dim, n)
     out
 end

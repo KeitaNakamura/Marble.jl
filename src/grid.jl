@@ -31,7 +31,7 @@ gridaxes(x::Grid) = x.axes
 gridaxes(x::Grid, i::Int) = (@_propagate_inbounds_meta; gridaxes(x)[i])
 gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 
-check_interpolation(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("`Grid` must include the information of interpolation, see help `?Grid` for more details."))
+check_interpolation(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("no interpolation information in `Grid`"))
 check_interpolation(::Grid{<: Any, <: Any, <: Interpolation}) = nothing
 
 # `axes` isa `Tuple`
