@@ -65,9 +65,9 @@ end
     AA = Array(A)
     BB = Array(B)
     @test @inferred(A + A)::Metale.SpArray{Float64} == AA + AA
-    @test @inferred(A + B)::Metale.SpArray{Float64} == AA + BB
+    @test @inferred(A + B)::Metale.SpArray{Float64} == map((x,y) -> ifelse(x==0||y==0,0,x+y), AA, BB)
     @test @inferred(A .* A)::Metale.SpArray{Float64} == AA .* AA
-    @test @inferred(A .* B)::Metale.SpArray{Float64} == AA .* BB
+    @test @inferred(A .* B)::Metale.SpArray{Float64} == map((x,y) -> ifelse(x==0||y==0,0,x*y), AA, BB)
     @test @inferred(broadcast!(*, A, A, A))::Metale.SpArray{Float64} == broadcast!(*, AA, AA, AA)
     @test @inferred(broadcast!(*, A, A, B))::Metale.SpArray{Float64} == broadcast!(*, AA, AA, BB)
     @test A.spat == A_spat # sparsity pattern is never changed in `broadcast`

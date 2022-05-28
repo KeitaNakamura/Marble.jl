@@ -43,6 +43,7 @@ SpArray{T}(dims::Int...) where {T} = SpArray{T}(dims)
 Base.IndexStyle(::Type{<: SpArray}) = IndexLinear()
 Base.size(x::SpArray) = size(x.spat)
 
+# handle `StructVector`
 Base.propertynames(x::SpArray{<: Any, <: Any, <: StructVector}) = (:data, :spat, propertynames(x.data)...)
 function Base.getproperty(x::SpArray{<: Any, <: Any, <: StructVector}, name::Symbol)
     name == :data && return getfield(x, :data)
@@ -50,17 +51,19 @@ function Base.getproperty(x::SpArray{<: Any, <: Any, <: StructVector}, name::Sym
     SpArray(getproperty(getfield(x, :data), name), getfield(x, :spat))
 end
 
+# return zero if the index is not active
 @inline function Base.getindex(x::SpArray, i::Int)
     @boundscheck checkbounds(x, i)
     spat = x.spat
     index = spat.indices[i]
     @inbounds index !== -1 ? x.data[index] : zero_recursive(eltype(x))
 end
+
+# do nothing if the index is not active (don't throw error!!)
 @inline function Base.setindex!(x::SpArray, v, i::Int)
     @boundscheck checkbounds(x, i)
     spat = x.spat
     @inbounds begin
-        # spat[i] || throw(UndefRefError()) # cannot use this because `@. A[indices] = A[indices]` doesn't work well yet
         index = spat.indices[i]
         index === -1 && return x
         x.data[index] = v
@@ -68,6 +71,8 @@ end
     x
 end
 
+# faster than using `setindex!(dest, dest + getindex(src, i))` when using `SpArray`
+# since the index is checked only once
 @inline function add!(x::SpArray, v, i)
     @boundscheck checkbounds(x, i)
     spat = x.spat
@@ -96,32 +101,35 @@ reinit!(x::SpArray{Nothing}) = x # for Grid without NodeState type
 
 Broadcast.BroadcastStyle(::Type{<: SpArray}) = ArrayStyle{SpArray}()
 
-__extract_spats(spats::Tuple, x::Any) = spats
-__extract_spats(spats::Tuple, x::AbstractArray) = (spats..., nothing)
-_extract_spats(spats::Tuple, x::AbstractArray) = __extract_spats(spats, broadcastable(x)) # handle Tensor
-_extract_spats(spats::Tuple, x::SpArray) = (spats..., x.spat)
-_extract_spats(spats::Tuple, x::Any) = spats
-extract_spats(spats::Tuple, args::Tuple{}) = spats
-extract_spats(spats::Tuple, args::Tuple) = extract_spats(_extract_spats(spats, args[1]), Base.tail(args))
-identical_spat(args...) = (spats = extract_spats((), args); all(x -> x === spats[1], spats))
+@generated function extract_sparsity_patterns(args::Vararg{Any, N}) where {N}
+    exps = []
+    for i in 1:N
+        if args[i] <: SpArray
+            push!(exps, :(args[$i].spat))
+        elseif (args[i] <: AbstractArray) && !(args[i] <: AbstractTensor)
+            push!(exps, :nothing)
+        end
+    end
+    quote
+        tuple($(exps...))
+    end
+end
+identical(x, ys...) = all(y -> y === x, ys)
 
-getdata(x::SpArray) = x.data
-getdata(x::Any) = x
-
-getspat(x::SpArray) = x.spat
-getspat(x::AbstractArray) = ifelse(broadcastable(x) isa AbstractArray, true, false) # handle Tensor
-getspat(x::Any) = false
-
+_getspat(x::SpArray) = x.spat
+_getspat(x::Any) = false
 function Base.similar(bc::Broadcasted{ArrayStyle{SpArray}}, ::Type{ElType}) where {ElType}
-    spat = broadcast(|, getspat.(bc.args)...)
+    spat = broadcast(&, map(_getspat, bc.args)...)
     reinit!(SpArray(Vector{ElType}(undef, length(bc)), spat))
 end
 
+_getdata(x::SpArray) = x.data
+_getdata(x::Any) = x
 function Base.copyto!(dest::SpArray, bc::Broadcasted{ArrayStyle{SpArray}})
     axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
     bc′ = Broadcast.flatten(bc)
-    if identical_spat(dest, bc′.args...)
-        broadcast!(bc′.f, getdata(dest), map(getdata, bc′.args)...)
+    if identical(extract_sparsity_patterns(dest, bc′.args...)...)
+        broadcast!(bc′.f, _getdata(dest), map(_getdata, bc′.args)...)
     else
         copyto!(dest, convert(Broadcasted{Nothing}, bc′))
     end
@@ -131,8 +139,8 @@ end
 function Base.copyto!(dest::SpArray, bc::Broadcasted{ThreadedStyle})
     axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
     bc′ = Broadcast.flatten(bc.args[1])
-    if identical_spat(dest, bc′.args...)
-        _copyto!(getdata(dest), broadcasted(dot_threads, broadcasted(bc′.f, map(getdata, bc′.args)...)))
+    if identical(extract_sparsity_patterns(dest, bc′.args...)...)
+        _copyto!(_getdata(dest), broadcasted(dot_threads, broadcasted(bc′.f, map(_getdata, bc′.args)...)))
     else
         _copyto!(dest, broadcasted(dot_threads, bc′))
     end
