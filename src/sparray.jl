@@ -28,6 +28,114 @@ Broadcast.BroadcastStyle(::Type{<: SpPattern}) = ArrayStyle{SpPattern}()
 Base.similar(bc::Broadcasted{ArrayStyle{SpPattern}}, ::Type{Bool}) = SpPattern(size(bc))
 
 
+"""
+    SpArray{T}(dims...)
+
+`SpArray` is a kind of sparse array, but it is not allowed to freely change the value like `Array`:
+
+For example, trying to `setindex!` doesn't change anything without any errors as
+```jldoctest sparray
+julia> A = Metale.SpArray{Float64}(5,5)
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+
+julia> A[1,1]
+0.0
+
+julia> A[1,1] = 2
+2
+
+julia> A[1,1]
+0.0
+```
+
+This is because the index `(1,1)` is not activated yet.
+To activate the index, modify sparsity pattern `A.spat` and do `Metal.reinit!(A)`.
+
+```jldoctest sparray
+julia> A.spat[1,1] = true
+true
+
+julia> A[1,1] = 2; A[1,1] # still can't change anything before doing `reinit!`
+0.0
+
+julia> Metale.reinit!(A)
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ 2.17321e-314  ⋅  ⋅  ⋅  ⋅
+  ⋅            ⋅  ⋅  ⋅  ⋅
+  ⋅            ⋅  ⋅  ⋅  ⋅
+  ⋅            ⋅  ⋅  ⋅  ⋅
+  ⋅            ⋅  ⋅  ⋅  ⋅
+
+julia> A[1,1] = 2; A[1,1] # finally can change the value
+2.0
+```
+
+Although the inactive indices return zero value when using `getindex`,
+the behaviors in array calculation is similar to `missing` value rather than zero value:
+
+```jldoctest sparray
+julia> A
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ 2.0  ⋅  ⋅  ⋅  ⋅
+  ⋅   ⋅  ⋅  ⋅  ⋅
+  ⋅   ⋅  ⋅  ⋅  ⋅
+  ⋅   ⋅  ⋅  ⋅  ⋅
+  ⋅   ⋅  ⋅  ⋅  ⋅
+
+julia> C = rand(5,5)
+5×5 Matrix{Float64}:
+ 0.579862   0.639562  0.566704  0.870539  0.526344
+ 0.411294   0.839622  0.536369  0.962715  0.0779683
+ 0.972136   0.967143  0.711389  0.15118   0.966197
+ 0.0149088  0.789764  0.103929  0.715355  0.666558
+ 0.520355   0.696041  0.806704  0.939548  0.131026
+
+julia> A + C
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+
+julia> 3A
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+```
+
+Thus, inactive indices are propagated as
+
+```jldoctest sparray
+julia> B = Metale.SpArray{Float64}(5,5);
+
+julia> B.spat[3,3] = true; Metale.reinit!(B); B[3,3] = 8.0;
+
+julia> B
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ ⋅  ⋅   ⋅   ⋅  ⋅
+ ⋅  ⋅   ⋅   ⋅  ⋅
+ ⋅  ⋅  8.0  ⋅  ⋅
+ ⋅  ⋅   ⋅   ⋅  ⋅
+ ⋅  ⋅   ⋅   ⋅  ⋅
+
+julia> A + B
+5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ ⋅  ⋅  ⋅  ⋅  ⋅
+```
+"""
 struct SpArray{T, dim, V <: AbstractVector{T}} <: AbstractArray{T, dim}
     data::V
     spat::SpPattern{dim}

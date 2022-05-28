@@ -5,6 +5,8 @@ using Metale
 DocMeta.setdocmeta!(Metale, :DocTestSetup, recursive = true,
     quote
         using Metale
+        using Random
+        Random.seed!(1234)
     end
 )
 
