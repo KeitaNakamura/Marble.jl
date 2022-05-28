@@ -1,5 +1,5 @@
-# Metale
+# Marble
 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://KeitaNakamura.github.io/Metale.jl/dev)
-[![Build Status](https://github.com/KeitaNakamura/Metale.jl/workflows/CI/badge.svg)](https://github.com/KeitaNakamura/Metale.jl/actions)
-[![codecov](https://codecov.io/gh/KeitaNakamura/Metale.jl/branch/main/graph/badge.svg?token=oeJ1zWKZ2E)](https://codecov.io/gh/KeitaNakamura/Metale.jl)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://KeitaNakamura.github.io/Marble.jl/dev)
+[![Build Status](https://github.com/KeitaNakamura/Marble.jl/workflows/CI/badge.svg)](https://github.com/KeitaNakamura/Marble.jl/actions)
+[![codecov](https://codecov.io/gh/KeitaNakamura/Marble.jl/branch/main/graph/badge.svg?token=F3fmhzaGsQ)](https://codecov.io/gh/KeitaNakamura/Marble.jl)

@@ -6,7 +6,7 @@ Construct `Grid` by `axes`.
 # Examples
 ```jldoctest
 julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
-4×4 Grid{Float64, 2, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+4×4 Grid{Float64, 2, Nothing, Nothing, Marble.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]
  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]
  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]
@@ -69,7 +69,7 @@ Grid(args...; kwargs...) = Grid{Float64}(args...; kwargs...)
 end
 
 """
-    Metale.neighbornodes(grid, x::Vec, h)
+    Marble.neighbornodes(grid, x::Vec, h)
 
 Return `CartesianIndices` storing neighboring node indices around `x`.
 `h` is a range for searching and its unit is `gridsteps` `dx`.
@@ -78,7 +78,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0)
-6-element Grid{Float64, 1, Nothing, Nothing, Metale.SpArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, Metale.OneDimensional}:
+6-element Grid{Float64, 1, Nothing, Nothing, Marble.SpArray{Nothing, 1, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, Marble.OneDimensional}:
  [0.0]
  [1.0]
  [2.0]
@@ -86,12 +86,12 @@ julia> grid = Grid(0.0:1.0:5.0)
  [4.0]
  [5.0]
 
-julia> Metale.neighbornodes(grid, Vec(1.5), 1)
+julia> Marble.neighbornodes(grid, Vec(1.5), 1)
 2-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(2,)
  CartesianIndex(3,)
 
-julia> Metale.neighbornodes(grid, Vec(1.5), 2)
+julia> Marble.neighbornodes(grid, Vec(1.5), 2)
 4-element CartesianIndices{1, Tuple{UnitRange{Int64}}}:
  CartesianIndex(1,)
  CartesianIndex(2,)
@@ -126,14 +126,14 @@ end
 end
 
 """
-    Metale.whichcell(grid, x::Vec)
+    Marble.whichcell(grid, x::Vec)
 
 Return cell index where `x` locates.
 
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{Float64, 2, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+6×6 Grid{Float64, 2, Nothing, Nothing, Marble.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -141,7 +141,7 @@ julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
  [4.0, 0.0]  [4.0, 1.0]  [4.0, 2.0]  [4.0, 3.0]  [4.0, 4.0]  [4.0, 5.0]
  [5.0, 0.0]  [5.0, 1.0]  [5.0, 2.0]  [5.0, 3.0]  [5.0, 4.0]  [5.0, 5.0]
 
-julia> Metale.whichcell(grid, Vec(1.5, 1.5))
+julia> Marble.whichcell(grid, Vec(1.5, 1.5))
 CartesianIndex(2, 2)
 ```
 """
@@ -154,7 +154,7 @@ CartesianIndex(2, 2)
 end
 
 """
-    Metale.whichblock(grid, x::Vec)
+    Marble.whichblock(grid, x::Vec)
 
 Return block index where `x` locates.
 The unit block size is `2^$BLOCK_UNIT` cells.
@@ -162,7 +162,7 @@ The unit block size is `2^$BLOCK_UNIT` cells.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:10.0, 0.0:1.0:10.0)
-11×11 Grid{Float64, 2, Nothing, Nothing, Metale.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
+11×11 Grid{Float64, 2, Nothing, Nothing, Marble.SpArray{Nothing, 2, StructArrays.StructVector{Nothing, NamedTuple{(), Tuple{}}, Int64}}, PlaneStrain}:
  [0.0, 0.0]   [0.0, 1.0]   [0.0, 2.0]   …  [0.0, 9.0]   [0.0, 10.0]
  [1.0, 0.0]   [1.0, 1.0]   [1.0, 2.0]      [1.0, 9.0]   [1.0, 10.0]
  [2.0, 0.0]   [2.0, 1.0]   [2.0, 2.0]      [2.0, 9.0]   [2.0, 10.0]
@@ -175,7 +175,7 @@ julia> grid = Grid(0.0:1.0:10.0, 0.0:1.0:10.0)
  [9.0, 0.0]   [9.0, 1.0]   [9.0, 2.0]      [9.0, 9.0]   [9.0, 10.0]
  [10.0, 0.0]  [10.0, 1.0]  [10.0, 2.0]  …  [10.0, 9.0]  [10.0, 10.0]
 
-julia> Metale.whichblock(grid, Vec(8.5, 1.5))
+julia> Marble.whichblock(grid, Vec(8.5, 1.5))
 CartesianIndex(2, 1)
 ```
 """

@@ -1,4 +1,4 @@
-using Metale
+using Marble
 using MaterialModels
 
 function stripfooting(
@@ -45,7 +45,7 @@ function stripfooting(
     # Outputs
     mkpath(outdir)
     paraview_file = joinpath(outdir, "out")
-    Metale.defalut_output_paraview_initialize(paraview_file)
+    Marble.defalut_output_paraview_initialize(paraview_file)
 
     logger = Logger(0.0, 0.1, 0.002; showprogress)
 
@@ -83,7 +83,7 @@ function stripfooting(
 
         @. tr∇v = tr(pointstate.∇v)
         if handle_volumetric_locking
-            Metale.smooth_pointstate!(tr∇v, pointstate.V, grid, cache)
+            Marble.smooth_pointstate!(tr∇v, pointstate.V, grid, cache)
         end
 
         @inbounds Threads.@threads for p in eachindex(pointstate)
@@ -122,7 +122,7 @@ function stripfooting(
         push!(load, vertical_load)
 
         if islogpoint(logger)
-            Metale.defalut_output_paraview_append(
+            Marble.defalut_output_paraview_append(
                 paraview_file,
                 grid,
                 pointstate,

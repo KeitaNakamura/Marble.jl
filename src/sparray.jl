@@ -35,8 +35,8 @@ Base.similar(bc::Broadcasted{ArrayStyle{SpPattern}}, ::Type{Bool}) = SpPattern(s
 
 For example, trying to `setindex!` doesn't change anything without any errors as
 ```jldoctest sparray
-julia> A = Metale.SpArray{Float64}(5,5)
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+julia> A = Marble.SpArray{Float64}(5,5)
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
@@ -63,8 +63,8 @@ true
 julia> A[1,1] = 2; A[1,1] # still can't change anything before doing `reinit!`
 0.0
 
-julia> Metale.reinit!(A)
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+julia> Marble.reinit!(A)
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  2.17321e-314  ⋅  ⋅  ⋅  ⋅
   ⋅            ⋅  ⋅  ⋅  ⋅
   ⋅            ⋅  ⋅  ⋅  ⋅
@@ -80,7 +80,7 @@ the behaviors in array calculation is similar to `missing` value rather than zer
 
 ```jldoctest sparray
 julia> A
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  2.0  ⋅  ⋅  ⋅  ⋅
   ⋅   ⋅  ⋅  ⋅  ⋅
   ⋅   ⋅  ⋅  ⋅  ⋅
@@ -96,7 +96,7 @@ julia> C = rand(5,5)
  0.520355   0.696041  0.806704  0.939548  0.131026
 
 julia> A + C
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
@@ -104,7 +104,7 @@ julia> A + C
  ⋅  ⋅  ⋅  ⋅  ⋅
 
 julia> 3A
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
@@ -115,12 +115,12 @@ julia> 3A
 Thus, inactive indices are propagated as
 
 ```jldoctest sparray
-julia> B = Metale.SpArray{Float64}(5,5);
+julia> B = Marble.SpArray{Float64}(5,5);
 
-julia> B.spat[3,3] = true; Metale.reinit!(B); B[3,3] = 8.0;
+julia> B.spat[3,3] = true; Marble.reinit!(B); B[3,3] = 8.0;
 
 julia> B
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  ⋅  ⋅   ⋅   ⋅  ⋅
  ⋅  ⋅   ⋅   ⋅  ⋅
  ⋅  ⋅  8.0  ⋅  ⋅
@@ -128,7 +128,7 @@ julia> B
  ⋅  ⋅   ⋅   ⋅  ⋅
 
 julia> A + B
-5×5 Metale.SpArray{Float64, 2, Vector{Float64}}:
+5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅
  ⋅  ⋅  ⋅  ⋅  ⋅

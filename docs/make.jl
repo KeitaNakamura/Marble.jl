@@ -1,10 +1,10 @@
 using Documenter
-using Metale
+using Marble
 
 # Setup for doctests in docstrings
-DocMeta.setdocmeta!(Metale, :DocTestSetup, recursive = true,
+DocMeta.setdocmeta!(Marble, :DocTestSetup, recursive = true,
     quote
-        using Metale
+        using Marble
         using Random
         Random.seed!(1234)
     end
@@ -12,8 +12,8 @@ DocMeta.setdocmeta!(Metale, :DocTestSetup, recursive = true,
 
 makedocs(;
     format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
-    modules = [Metale],
-    sitename = "Metale.jl",
+    modules = [Marble],
+    sitename = "Marble.jl",
     pages=[
         "Home" => "index.md",
         "Grid" => "grid.md",
@@ -25,6 +25,6 @@ makedocs(;
 )
 
 deploydocs(
-    repo = "github.com/KeitaNakamura/Metale.jl.git",
+    repo = "github.com/KeitaNakamura/Marble.jl.git",
     devbranch = "main",
 )

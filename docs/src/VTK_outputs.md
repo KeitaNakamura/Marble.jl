@@ -1,8 +1,8 @@
 ```@meta
-DocTestSetup = :(using Metale)
+DocTestSetup = :(using Marble)
 ```
 
-# Metale.VTKOutputs
+# Marble.VTKOutputs
 
 ```@index
 Order = [:type, :function]
@@ -10,7 +10,7 @@ Pages = ["VTK_outputs.md"]
 ```
 
 ```@autodocs
-Modules = [Metale]
+Modules = [Marble]
 Order   = [:type, :function]
 Pages   = ["vtk.jl"]
 ```

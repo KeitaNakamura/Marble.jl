@@ -1,5 +1,5 @@
 ```@meta
-DocTestSetup = :(using Metale)
+DocTestSetup = :(using Marble)
 ```
 
 # Grid
@@ -10,7 +10,7 @@ Pages = ["grid.md"]
 ```
 
 ```@autodocs
-Modules = [Metale]
+Modules = [Marble]
 Order   = [:type, :function]
 Pages   = ["grid.jl"]
 ```

@@ -28,25 +28,25 @@ end
     @test @inferred(gridorigin(grid))::Vec{2} == Vec(0,1)
 
     # neighbornodes/neighborblocks/whichcell/whichblock
-    @test @inferred(Metale.neighbornodes(grid, Vec(0.6, 8.8), 1))::CartesianIndices == CartesianIndices((1:2, 4:5))
-    @test @inferred(Metale.neighbornodes(grid, Vec(0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:3, 3:6))
-    @test @inferred(Metale.neighbornodes(grid, Vec(-0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:0, 1:0))
-    @test @inferred(Metale.neighbornodes(grid, Vec(0.6, 8.8), Vec(1,2)))::CartesianIndices == CartesianIndices((1:2, 3:6))
-    @test @inferred(Metale.neighborblocks(grid, Vec(8.8, 4.6), 1))::CartesianIndices == CartesianIndices((1:2, 1:2))
-    @test @inferred(Metale.neighborblocks(grid, Vec(8.8, 4.6), 2))::CartesianIndices == CartesianIndices((1:2, 1:2))
-    @test_throws BoundsError Metale.neighborblocks(grid, CartesianIndex(3, 1), 1)
-    @test (Metale.whichcell(grid, Vec(0.6, 8.8)))::CartesianIndex == CartesianIndex(1, 4)
-    @test (Metale.whichcell(grid, Vec(-0.6, 8.8)))::Nothing == nothing
-    @test (Metale.whichblock(grid, Vec(8.8, 4.6)))::CartesianIndex == CartesianIndex(2, 1)
-    @test (Metale.whichblock(grid, Vec(-8.8, 4.6)))::Nothing == nothing
+    @test @inferred(Marble.neighbornodes(grid, Vec(0.6, 8.8), 1))::CartesianIndices == CartesianIndices((1:2, 4:5))
+    @test @inferred(Marble.neighbornodes(grid, Vec(0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:3, 3:6))
+    @test @inferred(Marble.neighbornodes(grid, Vec(-0.6, 8.8), 2))::CartesianIndices == CartesianIndices((1:0, 1:0))
+    @test @inferred(Marble.neighbornodes(grid, Vec(0.6, 8.8), Vec(1,2)))::CartesianIndices == CartesianIndices((1:2, 3:6))
+    @test @inferred(Marble.neighborblocks(grid, Vec(8.8, 4.6), 1))::CartesianIndices == CartesianIndices((1:2, 1:2))
+    @test @inferred(Marble.neighborblocks(grid, Vec(8.8, 4.6), 2))::CartesianIndices == CartesianIndices((1:2, 1:2))
+    @test_throws BoundsError Marble.neighborblocks(grid, CartesianIndex(3, 1), 1)
+    @test (Marble.whichcell(grid, Vec(0.6, 8.8)))::CartesianIndex == CartesianIndex(1, 4)
+    @test (Marble.whichcell(grid, Vec(-0.6, 8.8)))::Nothing == nothing
+    @test (Marble.whichblock(grid, Vec(8.8, 4.6)))::CartesianIndex == CartesianIndex(2, 1)
+    @test (Marble.whichblock(grid, Vec(-8.8, 4.6)))::Nothing == nothing
 
     # pointsinblock
-    @test Metale.blocksize(grid) == (2, 2)
+    @test Marble.blocksize(grid) == (2, 2)
     xₚ = Vec{2, Float64}[(2,2), (8, 18), (8, 21), (4, 18), (5, 18)]
-    @test Metale.pointsinblock(grid, xₚ) == reshape([[1], [], [4, 5], [2]], 2, 2)
+    @test Marble.pointsinblock(grid, xₚ) == reshape([[1], [], [4, 5], [2]], 2, 2)
 
     # threadsafe_blocks
-    @test Metale.threadsafe_blocks((20, 30)) == [[CartesianIndex(1,1) CartesianIndex(1,3); CartesianIndex(3,1) CartesianIndex(3,3)],
+    @test Marble.threadsafe_blocks((20, 30)) == [[CartesianIndex(1,1) CartesianIndex(1,3); CartesianIndex(3,1) CartesianIndex(3,3)],
                                                  [CartesianIndex(2,1) CartesianIndex(2,3)],
                                                  [CartesianIndex(1,2) CartesianIndex(1,4); CartesianIndex(3,2) CartesianIndex(3,4)],
                                                  [CartesianIndex(2,2) CartesianIndex(2,4)]]

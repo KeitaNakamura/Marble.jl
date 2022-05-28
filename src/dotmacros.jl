@@ -31,9 +31,9 @@ macro dot_threads(ex)
         end
     end
     if Meta.isexpr(ex, :(=))
-        ex.args[2] = Expr(:call, :(Metale.dot_threads), ex.args[2])
+        ex.args[2] = Expr(:call, :(Marble.dot_threads), ex.args[2])
     else
-        ex = Expr(:call, :(Metale.dot_threads), ex)
+        ex = Expr(:call, :(Marble.dot_threads), ex)
     end
     esc(Broadcast.__dot__(ex))
 end
@@ -59,6 +59,6 @@ function dot_lazy end
 @inline Broadcast.materialize(bc::Broadcasted{LazyDotStyle}) = LazyDotArray(only(bc.args))
 
 macro dot_lazy(ex)
-    ex = Expr(:call, :(Metale.dot_lazy), ex)
+    ex = Expr(:call, :(Marble.dot_lazy), ex)
     esc(Broadcast.__dot__(ex))
 end

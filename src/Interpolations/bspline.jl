@@ -11,7 +11,7 @@ Create B-spline kernel.
 julia> f = LinearBSpline()
 LinearBSpline()
 
-julia> Metale.value(f, Vec(0.5, 0.5))
+julia> Marble.value(f, Vec(0.5, 0.5))
 0.25
 ```
 """

@@ -1,4 +1,4 @@
-using Metale
+using Marble
 using MaterialModels
 
 function sandcolumn(
@@ -39,7 +39,7 @@ function sandcolumn(
     # Outputs
     mkpath(outdir)
     paraview_file = joinpath(outdir, "out")
-    Metale.defalut_output_paraview_initialize(paraview_file)
+    Marble.defalut_output_paraview_initialize(paraview_file)
 
     logger = Logger(0.0, 0.6, 0.01; showprogress)
 
@@ -92,7 +92,7 @@ function sandcolumn(
         update!(logger, t += dt)
 
         if islogpoint(logger)
-            Metale.defalut_output_paraview_append(
+            Marble.defalut_output_paraview_append(
                 paraview_file,
                 grid,
                 pointstate,

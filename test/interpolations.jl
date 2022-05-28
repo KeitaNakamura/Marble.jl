@@ -12,7 +12,7 @@
                     update!(mpvalues, grid, x)
                     @test sum(mpvalues.N) ≈ 1
                     @test sum(mpvalues.∇N) ≈ zero(Vec{dim}) atol=TOL
-                    l = Metale.getsupportlength(bspline)
+                    l = Marble.getsupportlength(bspline)
                     if all(a->l<a<1-l, x)
                         @test grid_to_point((mp,i) -> mp.N*grid[i], mpvalues) ≈ x atol=TOL
                         @test grid_to_point((mp,i) -> grid[i]⊗mp.∇N, mpvalues) ≈ I atol=TOL

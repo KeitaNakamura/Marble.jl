@@ -1,5 +1,5 @@
 ```@meta
-DocTestSetup = :(using Metale)
+DocTestSetup = :(using Marble)
 ```
 
 # Contact mechanics
@@ -10,7 +10,7 @@ Pages = ["contact_mechanics.md"]
 ```
 
 ```@autodocs
-Modules = [Metale]
+Modules = [Marble]
 Order   = [:type, :function]
 Pages   = ["contact.jl"]
 ```

@@ -1,5 +1,5 @@
 ```@meta
-DocTestSetup = :(using Metale)
+DocTestSetup = :(using Marble)
 ```
 
 # Interpolations
@@ -10,7 +10,7 @@ Pages = ["interpolations.md"]
 ```
 
 ```@autodocs
-Modules = [Metale]
+Modules = [Marble]
 Order   = [:type, :function]
 Pages   = ["Interpolations/mpvalues.jl",
            "Interpolations/bspline.jl",
