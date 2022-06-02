@@ -54,8 +54,8 @@ function sandcolumn(
         end
 
         update!(cache, pointstate)
+        update!(gridstate, Marble.sparsity_pattern(cache))
 
-        Marble.reinit!(gridstate, Marble.sparsity_pattern(cache))
         transfer.point_to_grid!(gridstate, pointstate, cache, dt)
 
         # boundary conditions
