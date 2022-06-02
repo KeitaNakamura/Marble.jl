@@ -1,5 +1,5 @@
 """
-    Grid([::Type{NodeState}], [::Interpolation], axes::AbstractVector...)
+    Grid([::Type{GridState}], [::Interpolation], axes::AbstractVector...)
 
 Construct `Grid` by `axes`.
 
@@ -50,7 +50,7 @@ function Grid{T}(::Type{Node}, interp, axes::NTuple{dim, AbstractVector}; coordi
     )
 end
 function Grid{T}(interp::Interpolation, axes::NTuple{dim, AbstractVector}; kwargs...) where {T, dim}
-    Node = default_nodestate_type(interp, Val(dim), Val(T))
+    Node = default_gridstate_type(interp, Val(dim), Val(T))
     Grid{T}(Node, interp, axes; kwargs...)
 end
 Grid{T}(axes::Tuple{Vararg{AbstractVector}}; kwargs...) where {T} = Grid{T}(Nothing, nothing, axes; kwargs...)

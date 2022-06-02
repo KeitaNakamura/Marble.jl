@@ -1,8 +1,8 @@
-################
-# Nodal states #
-################
+###############
+# Grid states #
+###############
 
-struct DefaultNodalState{dim, T, L, LL}
+struct DefaultGridState{dim, T, L, LL}
     m::T
     v::Vec{dim, T}
     v_n::Vec{dim, T}
@@ -10,7 +10,7 @@ struct DefaultNodalState{dim, T, L, LL}
     poly_mat::Mat{L, L, T, LL}
 end
 
-default_nodestate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultNodalState{dim, T, dim+1, (dim+1)*(dim+1)}
+default_gridstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
 
 ################
 # Point states #
