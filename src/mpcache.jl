@@ -1,6 +1,6 @@
-struct MPCache{dim, T, Tmp <: MPValues{dim, T}}
+struct MPCache{T, dim, F, CS, Tmp <: MPValues{dim, T}}
+    grid::Grid{T, dim, F, CS}
     mpvalues::Vector{Tmp}
-    gridsize::NTuple{dim, Int}
     npoints::Base.RefValue{Int}
     pointsinblock::Array{Vector{Int}, dim}
     spat::Array{Bool, dim}
@@ -11,14 +11,15 @@ function MPCache(grid::Grid{T, dim}, xₚ::AbstractVector{<: Vec{dim}}) where {d
     check_interpolation(grid)
     npoints = length(xₚ)
     mpvalues = [MPValues{dim, T}(grid.interpolation) for _ in 1:npoints]
-    MPCache(mpvalues, size(grid), Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
+    MPCache(grid, mpvalues, Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
 end
 MPCache(grid::Grid, pointstate::AbstractVector) = MPCache(grid, pointstate.x)
 
 # helper functions
-gridsize(cache::MPCache) = cache.gridsize
+gridsize(cache::MPCache) = size(cache.grid)
 npoints(cache::MPCache) = cache.npoints[]
 pointsinblock(cache::MPCache) = cache.pointsinblock
+sparsity_pattern(cache::MPCache) = cache.spat
 
 # reorder_pointstate!
 function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
@@ -93,9 +94,8 @@ function allocate!(f, x::Vector, n::Integer)
     x
 end
 
-function update!(cache::MPCache, grid::Grid, pointstate; exclude::Union{Nothing, AbstractArray{Bool}} = nothing)
-    @assert size(grid) == gridsize(cache)
-
+function update!(cache::MPCache, pointstate; exclude::Union{Nothing, AbstractArray{Bool}} = nothing)
+    grid = cache.grid
     mpvalues = cache.mpvalues
     pointsinblock = cache.pointsinblock
     spat = cache.spat
@@ -109,10 +109,6 @@ function update!(cache::MPCache, grid::Grid, pointstate; exclude::Union{Nothing,
     Threads.@threads for p in 1:length(pointstate)
         @inbounds update!(mpvalues[p], grid, LazyRow(pointstate, p), spat)
     end
-
-    gridstate = grid.state
-    copyto!(gridstate.spat, spat)
-    reinit!(gridstate)
 
     cache
 end
@@ -155,7 +151,7 @@ function point_to_grid!(p2g, gridstates, cache::MPCache; zeroinit::Bool = true)
     gridstates
 end
 
-function point_to_grid!(p2g, gridstates::Tuple{Vararg{AbstractArray}}, cache::MPCache, pointmask::AbstractVector{Bool}; zeroinit::Bool = true)
+function point_to_grid!(p2g, gridstates, cache::MPCache, pointmask::AbstractVector{Bool}; zeroinit::Bool = true)
     checksize(gridstates, gridsize(cache))
     @assert length(pointmask) == npoints(cache)
     zeroinit && maptuple(fillzero!, gridstates)
@@ -225,19 +221,20 @@ end
     end
 end
 
-function smooth_pointstate!(vals::AbstractVector, Vₚ::AbstractVector, grid::Grid, cache::MPCache)
+function smooth_pointstate!(vals::AbstractVector, Vₚ::AbstractVector, gridstate::AbstractArray, cache::MPCache)
     @assert length(vals) == length(Vₚ) == npoints(cache)
+    grid = cache.grid
     basis = PolynomialBasis{1}()
-    point_to_grid!((grid.state.poly_coef, grid.state.poly_mat), cache) do mp, p, i
+    point_to_grid!((gridstate.poly_coef, gridstate.poly_mat), cache) do mp, p, i
         @_inline_propagate_inbounds_meta
         P = value(basis, mp.xp - grid[i])
         VP = (mp.N * Vₚ[p]) * P
         VP * vals[p], VP ⊗ P
     end
-    @dot_threads grid.state.poly_coef = safe_inv(grid.state.poly_mat) ⋅ grid.state.poly_coef
+    @dot_threads gridstate.poly_coef = safe_inv(gridstate.poly_mat) ⋅ gridstate.poly_coef
     grid_to_point!(vals, cache) do mp, i, p
         @_inline_propagate_inbounds_meta
         P = value(basis, mp.xp - grid[i])
-        mp.N * (P ⋅ grid.state.poly_coef[i])
+        mp.N * (P ⋅ gridstate.poly_coef[i])
     end
 end

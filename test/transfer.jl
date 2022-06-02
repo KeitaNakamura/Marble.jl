@@ -4,6 +4,7 @@
         for coordinate_system in (PlaneStrain(), Axisymmetric())
             # initialization
             grid = Grid(it, 0.0:2.0:10.0, 0.0:2.0:20.0; coordinate_system)
+            gridstate = generate_gridstate(grid)
             pointstate = generate_pointstate((x,y) -> true, grid)
             cache = MPCache(grid, pointstate.x)
             v0 = rand(Vec{2})
@@ -12,8 +13,9 @@
             @. pointstate.v = v0
             @. pointstate.σ = zero(SymmetricSecondOrderTensor{3})
             # transfer
-            update!(cache, grid, pointstate)
-            transfer.point_to_grid!(grid, pointstate, cache, 1)
+            update!(cache, pointstate)
+            Marble.reinit!(gridstate, Marble.sparsity_pattern(cache))
+            transfer.point_to_grid!(gridstate, pointstate, cache, 1)
             @test all(==(v0), pointstate.v)
         end
     end

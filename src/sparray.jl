@@ -206,6 +206,13 @@ function reinit!(x::SpArray)
 end
 reinit!(x::SpArray{Nothing}) = x # for Grid without NodeState type
 
+function reinit!(x::SpArray, spat::AbstractArray{Bool})
+    @assert size(x) == size(spat)
+    copyto!(x.spat, spat)
+    reinit!(x)
+    x
+end
+
 
 Broadcast.BroadcastStyle(::Type{<: SpArray}) = ArrayStyle{SpArray}()
 
