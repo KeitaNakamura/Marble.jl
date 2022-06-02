@@ -11,6 +11,16 @@ struct DefaultGridState{dim, T, L, LL}
 end
 
 default_gridstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
+default_gridstate_type(::Nothing, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
+
+function generate_gridstate(Node::Type, grid::Grid)
+    SpArray(StructVector{Node}(undef, 0), SpPattern(size(grid)))
+end
+
+function generate_gridstate(grid::Grid{T, dim}) where {T, dim}
+    Node = default_gridstate_type(grid.interpolation, Val(dim), Val(T))
+    generate_gridstate(Node, grid)
+end
 
 ################
 # Point states #

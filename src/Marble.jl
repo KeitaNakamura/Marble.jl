@@ -24,6 +24,7 @@ export
     gridaxes,
     gridorigin,
     boundaries,
+    generate_gridstate,
     generate_pointstate,
 # interpolations
     update!,
