@@ -1,20 +1,19 @@
 """
-    Grid([::Interpolation], axes::AbstractVector...)
+    Grid(axes::AbstractVector...)
 
 Construct `Grid` by `axes`.
 
 # Examples
 ```jldoctest
 julia> Grid(range(0, 3, step = 1.0), range(1, 4, step = 1.0))
-4×4 Grid{Float64, 2, Nothing, PlaneStrain}:
+4×4 Grid{Float64, 2, PlaneStrain}:
  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]
  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]
  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]
  [3.0, 1.0]  [3.0, 2.0]  [3.0, 3.0]  [3.0, 4.0]
 ```
 """
-struct Grid{T, dim, F <: Union{Nothing, Interpolation}, CS <: CoordinateSystem} <: AbstractArray{Vec{dim, T}, dim}
-    interpolation::F
+struct Grid{T, dim, CS <: CoordinateSystem} <: AbstractArray{Vec{dim, T}, dim}
     axes::NTuple{dim, Vector{T}}
     gridsteps::NTuple{dim, T}
     gridsteps_inv::NTuple{dim, T}
@@ -30,29 +29,17 @@ gridaxes(x::Grid) = x.axes
 gridaxes(x::Grid, i::Int) = (@_propagate_inbounds_meta; gridaxes(x)[i])
 gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 
-check_interpolation(::Grid{<: Any, <: Any, Nothing}) = throw(ArgumentError("no interpolation information in `Grid`"))
-check_interpolation(::Grid{<: Any, <: Any, <: Interpolation}) = nothing
-
-# `axes` isa `Tuple`
-function Grid{T}(interp, axes::NTuple{dim, AbstractVector}; coordinate_system = nothing) where {T, dim}
+function Grid{T}(axes::NTuple{dim, AbstractVector}; coordinate_system = nothing) where {T, dim}
     dx = map(step, axes)
     dx⁻¹ = map(inv, dx)
-
     Grid(
-        interp,
         map(Array{T}, axes),
         map(T, dx),
         map(T, dx⁻¹),
         get_coordinate_system(coordinate_system, Val(dim)),
     )
 end
-Grid{T}(axes::Tuple{Vararg{AbstractVector}}; kwargs...) where {T} = Grid{T}(nothing, axes; kwargs...)
-
-# `axes` isa `Vararg`
-Grid{T}(interp, axes::AbstractVector...; kwargs...) where {T} = Grid{T}(interp, axes; kwargs...)
-Grid{T}(axes::AbstractVector...; kwargs...) where {T} = Grid{T}(nothing, axes; kwargs...)
-
-# `T == Float64` by default
+Grid{T}(axes::AbstractVector...; kwargs...) where {T} = Grid{T}(axes; kwargs...)
 Grid(args...; kwargs...) = Grid{Float64}(args...; kwargs...)
 
 @inline function Base.getindex(grid::Grid{<: Any, dim}, i::Vararg{Int, dim}) where {dim}
@@ -70,7 +57,7 @@ In 1D, for example, the searching range becomes `x ± h*dx`.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0)
-6-element Grid{Float64, 1, Nothing, Marble.OneDimensional}:
+6-element Grid{Float64, 1, Marble.OneDimensional}:
  [0.0]
  [1.0]
  [2.0]
@@ -115,7 +102,7 @@ Return cell index where `x` locates.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:5.0, 0.0:1.0:5.0)
-6×6 Grid{Float64, 2, Nothing, PlaneStrain}:
+6×6 Grid{Float64, 2, PlaneStrain}:
  [0.0, 0.0]  [0.0, 1.0]  [0.0, 2.0]  [0.0, 3.0]  [0.0, 4.0]  [0.0, 5.0]
  [1.0, 0.0]  [1.0, 1.0]  [1.0, 2.0]  [1.0, 3.0]  [1.0, 4.0]  [1.0, 5.0]
  [2.0, 0.0]  [2.0, 1.0]  [2.0, 2.0]  [2.0, 3.0]  [2.0, 4.0]  [2.0, 5.0]
@@ -144,7 +131,7 @@ The unit block size is `2^$BLOCK_UNIT` cells.
 # Examples
 ```jldoctest
 julia> grid = Grid(0.0:1.0:10.0, 0.0:1.0:10.0)
-11×11 Grid{Float64, 2, Nothing, PlaneStrain}:
+11×11 Grid{Float64, 2, PlaneStrain}:
  [0.0, 0.0]   [0.0, 1.0]   [0.0, 2.0]   …  [0.0, 9.0]   [0.0, 10.0]
  [1.0, 0.0]   [1.0, 1.0]   [1.0, 2.0]      [1.0, 9.0]   [1.0, 10.0]
  [2.0, 0.0]   [2.0, 1.0]   [2.0, 2.0]      [2.0, 9.0]   [2.0, 10.0]

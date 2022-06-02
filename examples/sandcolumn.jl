@@ -17,10 +17,10 @@ function sandcolumn(
     ν = 0.333
     E = 1e6
 
-    grid = Grid(interp, 0:dx:1.0, 0:dx:1.0)
-    pointstate = generate_pointstate((x,y) -> 0.4 < x < 0.6 && y < h, grid)
-    gridstate = generate_gridstate(grid)
-    cache = MPCache(grid, pointstate.x)
+    grid = Grid(0:dx:1.0, 0:dx:1.0)
+    pointstate = generate_pointstate((x,y) -> 0.4 < x < 0.6 && y < h, interp, grid)
+    gridstate = generate_gridstate(interp, grid)
+    cache = MPCache(interp, grid, pointstate.x)
     elastic = LinearElastic(; E, ν)
     model = DruckerPrager(elastic, :planestrain; c=0, ϕ, ψ, tensioncutoff=0)
 

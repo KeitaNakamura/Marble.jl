@@ -11,14 +11,18 @@ struct DefaultGridState{dim, T, L, LL}
 end
 
 default_gridstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
-default_gridstate_type(::Nothing, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
+default_gridstate_type(::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
 
 function generate_gridstate(Node::Type, grid::Grid)
     SpArray(StructVector{Node}(undef, 0), SpPattern(size(grid)))
 end
 
+function generate_gridstate(interp::Interpolation, grid::Grid{T, dim}) where {T, dim}
+    Node = default_gridstate_type(interp, Val(dim), Val(T))
+    generate_gridstate(Node, grid)
+end
 function generate_gridstate(grid::Grid{T, dim}) where {T, dim}
-    Node = default_gridstate_type(grid.interpolation, Val(dim), Val(T))
+    Node = default_gridstate_type(Val(dim), Val(T))
     generate_gridstate(Node, grid)
 end
 
@@ -26,8 +30,7 @@ end
 # Point states #
 ################
 
-default_pointstate_type(::Nothing, ::Val{dim}, ::Val{T}) where {dim, T} =
-    @NamedTuple{x::Vec{dim, T}, V::T, r::Vec{dim, T}, index::Int}
+default_pointstate_type(::Val{dim}, ::Val{T}) where {dim, T} = @NamedTuple{x::Vec{dim, T}, V::T, r::Vec{dim, T}, index::Int}
 
 struct DefaultPointState{dim, T, L, dim_L}
     m::T
@@ -86,8 +89,12 @@ function generate_pointstate(indomain, Point::Type, grid::Grid{T, dim}; n::Int =
     pointstate
 end
 
+function generate_pointstate(indomain, interp::Interpolation, grid::Grid{T, dim}; kwargs...) where {dim, T}
+    Point = default_pointstate_type(interp, Val(dim), Val(T))
+    generate_pointstate(indomain, Point, grid; kwargs...)
+end
 function generate_pointstate(indomain, grid::Grid{T, dim}; kwargs...) where {dim, T}
-    Point = default_pointstate_type(grid.interpolation, Val(dim), Val(T))
+    Point = default_pointstate_type(Val(dim), Val(T))
     generate_pointstate(indomain, Point, grid; kwargs...)
 end
 

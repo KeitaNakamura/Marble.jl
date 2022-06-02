@@ -1,5 +1,6 @@
-struct MPCache{T, dim, F, CS, Tmp <: MPValues{dim, T}}
-    grid::Grid{T, dim, F, CS}
+struct MPCache{T, dim, F <: Interpolation, CS, Tmp <: MPValues{dim, T}}
+    interp::F
+    grid::Grid{T, dim, CS}
     mpvalues::Vector{Tmp}
     npoints::Base.RefValue{Int}
     pointsinblock::Array{Vector{Int}, dim}
@@ -7,19 +8,19 @@ struct MPCache{T, dim, F, CS, Tmp <: MPValues{dim, T}}
 end
 
 # constructors
-function MPCache(grid::Grid{T, dim}, xₚ::AbstractVector{<: Vec{dim}}) where {dim, T}
-    check_interpolation(grid)
+function MPCache(interp::Interpolation, grid::Grid{T, dim}, xₚ::AbstractVector{<: Vec{dim}}) where {dim, T}
     npoints = length(xₚ)
-    mpvalues = [MPValues{dim, T}(grid.interpolation) for _ in 1:npoints]
-    MPCache(grid, mpvalues, Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
+    mpvalues = [MPValues{dim, T}(interp) for _ in 1:npoints]
+    MPCache(interp, grid, mpvalues, Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
 end
-MPCache(grid::Grid, pointstate::AbstractVector) = MPCache(grid, pointstate.x)
+MPCache(interp::Interpolation, grid::Grid, pointstate::AbstractVector) = MPCache(interp, grid, pointstate.x)
 
 # helper functions
 gridsize(cache::MPCache) = size(cache.grid)
 npoints(cache::MPCache) = cache.npoints[]
 pointsinblock(cache::MPCache) = cache.pointsinblock
 sparsity_pattern(cache::MPCache) = cache.spat
+getinterp(cache::MPCache) = cache.interp
 
 # reorder_pointstate!
 function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
@@ -58,13 +59,13 @@ function pointsinblock(grid::Grid, xₚ::AbstractVector)
     pointsinblock!(ptsinblk, grid, xₚ)
 end
 
-function sparsity_pattern!(spat::Array{Bool}, grid::Grid, pointstate::AbstractVector, ptsinblk::AbstractArray{Vector{Int}}; exclude)
+function sparsity_pattern!(spat::Array{Bool}, interp::Interpolation, grid::Grid, pointstate::AbstractVector, ptsinblk::AbstractArray{Vector{Int}}; exclude)
     @assert size(spat) == size(grid)
     fill!(spat, false)
     for blocks in threadsafe_blocks(size(grid))
         Threads.@threads for blockindex in blocks
             for p in ptsinblk[blockindex]
-                inds = neighbornodes(grid.interpolation, grid, LazyRow(pointstate, p))
+                inds = neighbornodes(interp, grid, LazyRow(pointstate, p))
                 @inbounds spat[inds] .= true
             end
         end
@@ -104,7 +105,7 @@ function update!(cache::MPCache, pointstate; exclude::Union{Nothing, AbstractArr
     allocate!(i -> eltype(mpvalues)(), mpvalues, length(pointstate))
 
     pointsinblock!(pointsinblock, grid, pointstate.x)
-    sparsity_pattern!(spat, grid, pointstate, pointsinblock; exclude)
+    sparsity_pattern!(spat, getinterp(cache), grid, pointstate, pointsinblock; exclude)
 
     Threads.@threads for p in 1:length(pointstate)
         @inbounds update!(mpvalues[p], grid, LazyRow(pointstate, p), spat)

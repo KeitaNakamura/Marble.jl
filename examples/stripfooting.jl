@@ -19,10 +19,10 @@ function stripfooting(
     ψ = deg2rad(0)
     E = 1e9
 
-    grid = Grid(interp, 0:dx:5.0, 0:dx:5.0)
-    pointstate = generate_pointstate((x,y) -> y < h, grid)
-    gridstate = generate_gridstate(grid)
-    cache = MPCache(grid, pointstate.x)
+    grid = Grid(0:dx:5.0, 0:dx:5.0)
+    pointstate = generate_pointstate((x,y) -> y < h, interp, grid)
+    gridstate = generate_gridstate(interp, grid)
+    cache = MPCache(interp, grid, pointstate.x)
     elastic = LinearElastic(; E, ν)
     model = DruckerPrager(elastic, :planestrain; c, ϕ, ψ, tensioncutoff=false)
 

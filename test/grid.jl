@@ -3,14 +3,12 @@
     for T in (Float32, Float64)
         for axs in ((0:10,), (0:10, 0:20), (0:10, 0:20, 0:30))
             @test (@inferred Grid(axs...))::Grid{Float64, length(axs)} == Vec.(collect(Iterators.product(axs...)))
-            @test (@inferred Grid(LinearBSpline(), axs...))::Grid{Float64, length(axs)} == Grid(axs)
             @test (@inferred Grid{T}(axs...))::Grid{T, length(axs)} == Vec.(collect(Iterators.product(axs...)))
-            @test (@inferred Grid{T}(LinearBSpline(), axs...))::Grid{T, length(axs)} == Grid(axs)
         end
     end
 
     # gridsteps/gridaxes/gridorigin
-    grid = Grid(CubicBSpline(), 0:1.0:10, 1:2.0:20)
+    grid = Grid(0:1.0:10, 1:2.0:20)
     @test @inferred(gridsteps(grid)) == (1.0, 2.0)
     @test @inferred(gridsteps(grid, 1)) == 1.0
     @test @inferred(gridsteps(grid, 2)) == 2.0

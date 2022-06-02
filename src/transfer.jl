@@ -129,7 +129,7 @@ end
 
 function (::P2G_WLS)(gridstate::AbstractArray, pointstate::AbstractVector, cache::MPCache, dt::Real)
     grid = cache.grid
-    P = getbasisfunction(grid.interpolation)
+    P = getbasisfunction(getinterp(cache))
     point_to_grid!((gridstate.m, gridstate.v_n, gridstate.v), cache) do mp, p, i
         @_inline_propagate_inbounds_meta
         N = mp.N
@@ -153,7 +153,7 @@ end
 
 function (::P2G_Default)(gridstate::AbstractArray, pointstate::AbstractVector, cache::MPCache, dt::Real)
     grid = cache.grid
-    P2G! = P2G_default(grid.interpolation)
+    P2G! = P2G_default(getinterp(cache))
     P2G!(gridstate, pointstate, cache, dt)
 end
 
@@ -245,7 +245,7 @@ end
 
 function (::G2P_WLS)(pointstate::AbstractVector, gridstate::AbstractArray, cache::MPCache{<: Any, dim}, dt::Real) where {dim}
     grid = cache.grid
-    P = getbasisfunction(grid.interpolation)
+    P = getbasisfunction(getinterp(cache))
     p0 = value(P, zero(Vec{dim, Int}))
     ∇p0 = gradient(P, zero(Vec{dim, Int}))
     grid_to_point!(pointstate.C, cache) do mp, i, p
@@ -267,6 +267,6 @@ end
 
 function (::G2P_Default)(pointstate::AbstractVector, gridstate::AbstractArray, cache::MPCache, dt::Real)
     grid = cache.grid
-    G2P! = G2P_default(grid.interpolation)
+    G2P! = G2P_default(getinterp(cache))
     G2P!(pointstate, gridstate, cache, dt)
 end
