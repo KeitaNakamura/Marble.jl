@@ -14,7 +14,7 @@ default_gridstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = D
 default_gridstate_type(::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
 
 function generate_gridstate(Node::Type, grid::Grid)
-    SpArray(StructVector{Node}(undef, 0), SpPattern(size(grid)))
+    SpArray(StructVector{Node}(undef, 0), SpPattern(size(grid)), true, Ref(NaN))
 end
 
 function generate_gridstate(interp::Interpolation, grid::Grid{T, dim}) where {T, dim}

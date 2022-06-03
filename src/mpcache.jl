@@ -5,6 +5,7 @@ struct MPCache{T, dim, F <: Interpolation, CS, MV <: MPValues{dim, T}}
     mpvalues::Vector{MV}
     ptsinblk::Array{Vector{Int}, dim}
     npts::Base.RefValue{Int}
+    stamp::Base.RefValue{Float64}
 end
 
 # constructors
@@ -12,7 +13,7 @@ function MPCache(interp::Interpolation, grid::Grid{T, dim}, xₚ::AbstractVector
     spat = fill(false, size(grid))
     npts = length(xₚ)
     mpvalues = [MPValues{dim, T}(interp) for _ in 1:npts]
-    MPCache(interp, grid, spat, mpvalues, pointsinblock(grid, xₚ), Ref(npts))
+    MPCache(interp, grid, spat, mpvalues, pointsinblock(grid, xₚ), Ref(npts), Ref(NaN))
 end
 MPCache(interp::Interpolation, grid::Grid, pointstate::AbstractVector) = MPCache(interp, grid, pointstate.x)
 
@@ -22,6 +23,7 @@ num_points(cache::MPCache) = cache.npts[]
 get_pointsinblock(cache::MPCache) = cache.ptsinblk
 get_sparsitypattern(cache::MPCache) = cache.spat
 get_interpolation(cache::MPCache) = cache.interp
+get_stamp(cache::MPCache) = cache.stamp[]
 
 # reorder_pointstate!
 function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
@@ -102,7 +104,8 @@ function update!(cache::MPCache, pointstate; exclude::Union{Nothing, AbstractArr
     ptsinblk = cache.ptsinblk
     spat = cache.spat
 
-    cache.npts[] = length(pointstate)
+    cache.npts[]  = length(pointstate)
+    cache.stamp[] = time()
     allocate!(i -> eltype(mpvalues)(), mpvalues, length(pointstate))
 
     pointsinblock!(ptsinblk, grid, pointstate.x)
@@ -113,6 +116,12 @@ function update!(cache::MPCache, pointstate; exclude::Union{Nothing, AbstractArr
     end
 
     cache
+end
+
+function update_sparsitypattern!(spat::SpArray, mpcache::MPCache)
+    update_sparsitypattern!(spat, get_sparsitypattern(mpcache))
+    spat.stamp[] = get_stamp(mpcache)
+    spat
 end
 
 function eachpoint_blockwise_parallel(f, cache::MPCache)
@@ -129,7 +138,13 @@ end
 # point_to_grid! #
 ##################
 
-checksize(xs, dims) = @assert all(map_tuple(x -> size(x) == dims, xs))
+function check_gridstate(gridstate::AbstractArray, cache::MPCache)
+    @assert size(gridstate) == gridsize(cache)
+end
+function check_gridstate(gridstate::SpArray, cache::MPCache)
+    @assert size(gridstate) == gridsize(cache)
+    @assert get_stamp(gridstate) == get_stamp(cache)
+end
 
 function point_to_grid!(p2g, gridstates, mps::MPValues)
     @_inline_propagate_inbounds_meta
@@ -140,7 +155,7 @@ function point_to_grid!(p2g, gridstates, mps::MPValues)
 end
 
 function point_to_grid!(p2g, gridstates, cache::MPCache; zeroinit::Bool = true)
-    checksize(gridstates, gridsize(cache))
+    map_tuple(check_gridstate, gridstates, cache)
     zeroinit && map_tuple(fillzero!, gridstates)
     eachpoint_blockwise_parallel(cache) do p
         @_inline_propagate_inbounds_meta
@@ -154,7 +169,7 @@ function point_to_grid!(p2g, gridstates, cache::MPCache; zeroinit::Bool = true)
 end
 
 function point_to_grid!(p2g, gridstates, cache::MPCache, pointmask::AbstractVector{Bool}; zeroinit::Bool = true)
-    checksize(gridstates, gridsize(cache))
+    map_tuple(check_gridstate, gridstates, cache)
     @assert length(pointmask) == num_points(cache)
     zeroinit && map_tuple(fillzero!, gridstates)
     eachpoint_blockwise_parallel(cache) do p
@@ -171,6 +186,10 @@ end
 ##################
 # grid_to_point! #
 ##################
+
+function check_pointstate(pointstate::AbstractVector, cache::MPCache)
+    @assert length(pointstate) == num_points(cache)
+end
 
 function grid_to_point(g2p, mps::MPValues)
     @_inline_propagate_inbounds_meta
@@ -193,7 +212,7 @@ function grid_to_point(g2p, cache::MPCache)
 end
 
 function grid_to_point!(g2p, pointstates, cache::MPCache)
-    checksize(pointstates, (num_points(cache),))
+    map_tuple(check_pointstate, pointstates, cache)
     results = grid_to_point(g2p, cache)
     Threads.@threads for p in 1:num_points(cache)
         @inbounds map_tuple(setindex!, pointstates, results[p], p)
@@ -201,7 +220,7 @@ function grid_to_point!(g2p, pointstates, cache::MPCache)
 end
 
 function grid_to_point!(g2p, pointstates, cache::MPCache, pointmask::AbstractVector{Bool})
-    checksize(pointstates, (num_points(cache),))
+    map_tuple(check_pointstate, pointstates, cache)
     @assert length(pointmask) == num_points(cache)
     results = grid_to_point(g2p, cache)
     Threads.@threads for p in 1:num_points(cache)

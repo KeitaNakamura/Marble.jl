@@ -62,7 +62,7 @@ function stripfooting(
         end
 
         update!(cache, pointstate)
-        update!(gridstate, Marble.get_sparsitypattern(cache))
+        update_sparsitypattern!(gridstate, cache)
 
         transfer.point_to_grid!(gridstate, pointstate, cache, dt)
 

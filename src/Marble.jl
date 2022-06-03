@@ -37,13 +37,13 @@ export
     LinearWLS,
     BilinearWLS,
     KernelCorrection,
-    polynomial,
     MPValues,
 # MPCache
     MPCache,
     point_to_grid!,
     grid_to_point!,
     grid_to_point,
+    update_sparsitypattern!,
 # Transfer
     Transfer,
     TransferNormalFLIP,
