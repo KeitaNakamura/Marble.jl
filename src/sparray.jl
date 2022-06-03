@@ -23,9 +23,9 @@ end
 """
     SpArray{T}(dims...)
 
-`SpArray` is a kind of sparse array, but it is not allowed to freely change the value like `Array`:
-
+`SpArray` is a kind of sparse array, but it is not allowed to freely change the value like `Array`.
 For example, trying to `setindex!` doesn't change anything without any errors as
+
 ```jldoctest sparray
 julia> A = Marble.SpArray{Float64}(5,5)
 5×5 Marble.SpArray{Float64, 2, Vector{Float64}}:
@@ -70,7 +70,7 @@ julia> A[1,1] = 2; A[1,1]
 ```
 
 Although the inactive indices return zero value when using `getindex`,
-the behaviors in array calculation is similar to `missing` value rather than zero value:
+the behaviors in array calculation is similar to `missing` rather than zero:
 
 ```jldoctest sparray; setup = :(spat=falses(5,5); spat[1,1]=true; update_sparsitypattern!(A, spat); A[1,1]=2)
 julia> A
@@ -208,6 +208,10 @@ function update_sparsitypattern!(x::SpArray, spat::AbstractArray{Bool})
     x
 end
 
+#############
+# Broadcast #
+#############
+
 Broadcast.BroadcastStyle(::Type{<: SpArray}) = ArrayStyle{SpArray}()
 
 @generated function extract_sparsity_patterns(args::Vararg{Any, N}) where {N}
@@ -251,7 +255,7 @@ end
 
 function Base.copyto!(dest::SpArray, bc::Broadcasted{ThreadedStyle})
     axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
-    bc′ = Broadcast.flatten(bc.args[1])
+    bc′ = Broadcast.flatten(only(bc.args))
     if identical(extract_sparsity_patterns(dest, bc′.args...)...)
         _copyto!(_getdata(dest), broadcasted(dot_threads, broadcasted(bc′.f, map(_getdata, bc′.args)...)))
     else
@@ -260,6 +264,9 @@ function Base.copyto!(dest::SpArray, bc::Broadcasted{ThreadedStyle})
     dest
 end
 
+###############
+# Custom show #
+###############
 
 struct CDot end
 Base.show(io::IO, x::CDot) = print(io, "⋅")
