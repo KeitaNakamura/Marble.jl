@@ -62,7 +62,7 @@ function stripfooting(
         end
 
         update!(cache, pointstate)
-        update!(gridstate, Marble.sparsity_pattern(cache))
+        update!(gridstate, Marble.get_sparsitypattern(cache))
 
         transfer.point_to_grid!(gridstate, pointstate, cache, dt)
 
@@ -75,10 +75,10 @@ function stripfooting(
             gridstate.v[I] = v_footing
         end
         # don't apply any condition (free condition) on top boundary to properly handle diriclet boundary condition
-        @inbounds for (I,n) in boundaries(grid, "-y") # bottom
+        @inbounds for (I,n) in gridbounds(grid, "-y") # bottom
             gridstate.v[I] += contacted(CoulombFriction(:sticky), gridstate.v[I], n)
         end
-        @inbounds for (I,n) in boundaries(grid, "-x", "+x") # left and right
+        @inbounds for (I,n) in gridbounds(grid, "-x", "+x") # left and right
             gridstate.v[I] += contacted(CoulombFriction(:slip), gridstate.v[I], n)
         end
 

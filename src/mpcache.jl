@@ -1,26 +1,27 @@
-struct MPCache{T, dim, F <: Interpolation, CS, Tmp <: MPValues{dim, T}}
+struct MPCache{T, dim, F <: Interpolation, CS, MV <: MPValues{dim, T}}
     interp::F
     grid::Grid{T, dim, CS}
-    mpvalues::Vector{Tmp}
-    npoints::Base.RefValue{Int}
-    pointsinblock::Array{Vector{Int}, dim}
     spat::Array{Bool, dim}
+    mpvalues::Vector{MV}
+    ptsinblk::Array{Vector{Int}, dim}
+    npts::Base.RefValue{Int}
 end
 
 # constructors
 function MPCache(interp::Interpolation, grid::Grid{T, dim}, xₚ::AbstractVector{<: Vec{dim}}) where {dim, T}
-    npoints = length(xₚ)
-    mpvalues = [MPValues{dim, T}(interp) for _ in 1:npoints]
-    MPCache(interp, grid, mpvalues, Ref(npoints), pointsinblock(grid, xₚ), fill(false, size(grid)))
+    spat = fill(false, size(grid))
+    npts = length(xₚ)
+    mpvalues = [MPValues{dim, T}(interp) for _ in 1:npts]
+    MPCache(interp, grid, spat, mpvalues, pointsinblock(grid, xₚ), Ref(npts))
 end
 MPCache(interp::Interpolation, grid::Grid, pointstate::AbstractVector) = MPCache(interp, grid, pointstate.x)
 
 # helper functions
 gridsize(cache::MPCache) = size(cache.grid)
-npoints(cache::MPCache) = cache.npoints[]
-pointsinblock(cache::MPCache) = cache.pointsinblock
-sparsity_pattern(cache::MPCache) = cache.spat
-getinterp(cache::MPCache) = cache.interp
+num_points(cache::MPCache) = cache.npts[]
+get_pointsinblock(cache::MPCache) = cache.ptsinblk
+get_sparsitypattern(cache::MPCache) = cache.spat
+get_interpolation(cache::MPCache) = cache.interp
 
 # reorder_pointstate!
 function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
@@ -40,7 +41,7 @@ function reorder_pointstate!(pointstate::AbstractVector, ptsinblk::Array)
     @inbounds @. pointstate = pointstate[inds]
     pointstate
 end
-reorder_pointstate!(pointstate::AbstractVector, cache::MPCache) = reorder_pointstate!(pointstate, pointsinblock(cache))
+reorder_pointstate!(pointstate::AbstractVector, cache::MPCache) = reorder_pointstate!(pointstate, get_pointsinblock(cache))
 
 # pointsinblock!
 function pointsinblock!(ptsinblk::AbstractArray{Vector{Int}}, grid::Grid, xₚ::AbstractVector)
@@ -59,7 +60,7 @@ function pointsinblock(grid::Grid, xₚ::AbstractVector)
     pointsinblock!(ptsinblk, grid, xₚ)
 end
 
-function sparsity_pattern!(spat::Array{Bool}, interp::Interpolation, grid::Grid, pointstate::AbstractVector, ptsinblk::AbstractArray{Vector{Int}}; exclude)
+function update_sparsitypattern!(spat::Array{Bool}, interp::Interpolation, grid::Grid, pointstate::AbstractVector, ptsinblk::AbstractArray{Vector{Int}}; exclude)
     @assert size(spat) == size(grid)
     fill!(spat, false)
     for blocks in threadsafe_blocks(size(grid))
@@ -98,14 +99,14 @@ end
 function update!(cache::MPCache, pointstate; exclude::Union{Nothing, AbstractArray{Bool}} = nothing)
     grid = cache.grid
     mpvalues = cache.mpvalues
-    pointsinblock = cache.pointsinblock
+    ptsinblk = cache.ptsinblk
     spat = cache.spat
 
-    cache.npoints[] = length(pointstate)
+    cache.npts[] = length(pointstate)
     allocate!(i -> eltype(mpvalues)(), mpvalues, length(pointstate))
 
-    pointsinblock!(pointsinblock, grid, pointstate.x)
-    sparsity_pattern!(spat, getinterp(cache), grid, pointstate, pointsinblock; exclude)
+    pointsinblock!(ptsinblk, grid, pointstate.x)
+    update_sparsitypattern!(spat, get_interpolation(cache), grid, pointstate, ptsinblk; exclude)
 
     Threads.@threads for p in 1:length(pointstate)
         @inbounds update!(mpvalues[p], grid, LazyRow(pointstate, p), spat)
@@ -117,7 +118,7 @@ end
 function eachpoint_blockwise_parallel(f, cache::MPCache)
     for blocks in threadsafe_blocks(gridsize(cache))
         Threads.@threads for blockindex in blocks
-            @inbounds for p in pointsinblock(cache)[blockindex]
+            @inbounds for p in get_pointsinblock(cache)[blockindex]
                 f(p)
             end
         end
@@ -128,19 +129,19 @@ end
 # point_to_grid! #
 ##################
 
-checksize(xs, dims) = @assert all(maptuple(x -> size(x) == dims, xs))
+checksize(xs, dims) = @assert all(map_tuple(x -> size(x) == dims, xs))
 
 function point_to_grid!(p2g, gridstates, mps::MPValues)
     @_inline_propagate_inbounds_meta
     @simd for i in 1:length(mps)
         I = gridindices(mps, i)
-        maptuple(add!, gridstates, p2g(mps[i], I), I)
+        map_tuple(add!, gridstates, p2g(mps[i], I), I)
     end
 end
 
 function point_to_grid!(p2g, gridstates, cache::MPCache; zeroinit::Bool = true)
     checksize(gridstates, gridsize(cache))
-    zeroinit && maptuple(fillzero!, gridstates)
+    zeroinit && map_tuple(fillzero!, gridstates)
     eachpoint_blockwise_parallel(cache) do p
         @_inline_propagate_inbounds_meta
         point_to_grid!(
@@ -154,8 +155,8 @@ end
 
 function point_to_grid!(p2g, gridstates, cache::MPCache, pointmask::AbstractVector{Bool}; zeroinit::Bool = true)
     checksize(gridstates, gridsize(cache))
-    @assert length(pointmask) == npoints(cache)
-    zeroinit && maptuple(fillzero!, gridstates)
+    @assert length(pointmask) == num_points(cache)
+    zeroinit && map_tuple(fillzero!, gridstates)
     eachpoint_blockwise_parallel(cache) do p
         @_inline_propagate_inbounds_meta
         pointmask[p] && point_to_grid!(
@@ -176,13 +177,13 @@ function grid_to_point(g2p, mps::MPValues)
     vals = g2p(first(mps), gridindices(mps, 1))
     @simd for i in 2:length(mps)
         I = gridindices(mps, i)
-        vals = maptuple(+, vals, g2p(mps[i], I))
+        vals = map_tuple(+, vals, g2p(mps[i], I))
     end
     vals
 end
 
 function grid_to_point(g2p, cache::MPCache)
-    LazyDotArray(1:npoints(cache)) do p
+    LazyDotArray(1:num_points(cache)) do p
         @_inline_propagate_inbounds_meta
         grid_to_point(
             (mp, I) -> (@_inline_propagate_inbounds_meta; g2p(mp, I, p)),
@@ -192,19 +193,19 @@ function grid_to_point(g2p, cache::MPCache)
 end
 
 function grid_to_point!(g2p, pointstates, cache::MPCache)
-    checksize(pointstates, (npoints(cache),))
+    checksize(pointstates, (num_points(cache),))
     results = grid_to_point(g2p, cache)
-    Threads.@threads for p in 1:npoints(cache)
-        @inbounds maptuple(setindex!, pointstates, results[p], p)
+    Threads.@threads for p in 1:num_points(cache)
+        @inbounds map_tuple(setindex!, pointstates, results[p], p)
     end
 end
 
 function grid_to_point!(g2p, pointstates, cache::MPCache, pointmask::AbstractVector{Bool})
-    checksize(pointstates, (npoints(cache),))
-    @assert length(pointmask) == npoints(cache)
+    checksize(pointstates, (num_points(cache),))
+    @assert length(pointmask) == num_points(cache)
     results = grid_to_point(g2p, cache)
-    Threads.@threads for p in 1:npoints(cache)
-        @inbounds pointmask[p] && maptuple(setindex!, pointstates, results[p], p)
+    Threads.@threads for p in 1:num_points(cache)
+        @inbounds pointmask[p] && map_tuple(setindex!, pointstates, results[p], p)
     end
 end
 
@@ -223,7 +224,7 @@ end
 end
 
 function smooth_pointstate!(vals::AbstractVector, Vₚ::AbstractVector, gridstate::AbstractArray, cache::MPCache)
-    @assert length(vals) == length(Vₚ) == npoints(cache)
+    @assert length(vals) == length(Vₚ) == num_points(cache)
     grid = cache.grid
     basis = PolynomialBasis{1}()
     point_to_grid!((gridstate.poly_coef, gridstate.poly_mat), cache) do mp, p, i

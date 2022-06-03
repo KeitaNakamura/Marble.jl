@@ -195,6 +195,6 @@ function _boundaries(grid::AbstractArray{<: Any, dim}, which::String) where {dim
 
     Boundaries(inds, n)
 end
-function boundaries(grid::AbstractArray, which::Vararg{String, N}) where {N}
+function gridbounds(grid::AbstractArray, which::Vararg{String, N}) where {N}
     Iterators.flatten(ntuple(i -> _boundaries(grid, which[i]), Val(N)))
 end

@@ -54,15 +54,15 @@ function sandcolumn(
         end
 
         update!(cache, pointstate)
-        update!(gridstate, Marble.sparsity_pattern(cache))
+        update!(gridstate, Marble.get_sparsitypattern(cache))
 
         transfer.point_to_grid!(gridstate, pointstate, cache, dt)
 
         # boundary conditions
-        @inbounds for (I,n) in boundaries(grid, "-y") # bottom
+        @inbounds for (I,n) in gridbounds(grid, "-y") # bottom
             gridstate.v[I] += contacted(CoulombFriction(μ = 0.2), gridstate.v[I], n)
         end
-        @inbounds for (I,n) in boundaries(grid, "-x", "+x") # left and right
+        @inbounds for (I,n) in gridbounds(grid, "-x", "+x") # left and right
             gridstate.v[I] += contacted(CoulombFriction(μ = 0), gridstate.v[I], n)
         end
 

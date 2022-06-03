@@ -14,7 +14,7 @@
             @. pointstate.σ = zero(SymmetricSecondOrderTensor{3})
             # transfer
             update!(cache, pointstate)
-            update!(gridstate, Marble.sparsity_pattern(cache))
+            update!(gridstate, Marble.get_sparsitypattern(cache))
             transfer.point_to_grid!(gridstate, pointstate, cache, 1)
             @test all(==(v0), pointstate.v)
         end
