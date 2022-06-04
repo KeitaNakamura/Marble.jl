@@ -121,9 +121,11 @@ function update!(space::MPSpace, pointstate; exclude::Union{Nothing, AbstractArr
     space
 end
 
-function update_sppattern!(gridstate::SpArray, MPSpace::MPSpace)
-    update_sppattern!(gridstate, get_sppattern(MPSpace))
-    gridstate.stamp[] = get_stamp(MPSpace)
+function update_sppattern!(gridstate::SpArray, space::MPSpace)
+    @assert is_parent(gridstate)
+    @assert size(gridstate) == gridsize(space)
+    update_sppattern!(gridstate, get_sppattern(space))
+    set_stamp!(gridstate, get_stamp(space))
     gridstate
 end
 
