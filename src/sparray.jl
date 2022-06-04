@@ -134,7 +134,7 @@ struct SpArray{T, dim, V <: AbstractVector{T}} <: AbstractArray{T, dim}
     data::V
     spat::SpPattern{dim}
     parent::Bool
-    stamp::Base.RefValue{Float64} # only used when constructing `SpArray` by `generate_gridstate`
+    stamp::RefValue{Float64} # only used when constructing `SpArray` by `generate_gridstate`
 end
 
 function SpArray{T}(dims::Tuple{Vararg{Int}}) where {T}
