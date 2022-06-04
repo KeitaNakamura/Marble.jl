@@ -1,7 +1,9 @@
 """
     Grid(axes::AbstractVector...)
+    Grid{T}(axes::AbstractVector...)
 
 Construct `Grid` by `axes`.
+`axes` must have `step` function, i.e., each axis should be linearly spaced.
 
 # Examples
 ```jldoctest
