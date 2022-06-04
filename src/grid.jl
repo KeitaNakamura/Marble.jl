@@ -32,6 +32,7 @@ gridaxes(x::Grid, i::Int) = (@_propagate_inbounds_meta; gridaxes(x)[i])
 gridorigin(x::Grid) = Vec(map(first, gridaxes(x)))
 
 function Grid{T}(axes::NTuple{dim, AbstractVector}; coordinate_system = nothing) where {T, dim}
+    @assert all(map(issorted, axes))
     dx = map(step, axes)
     dx⁻¹ = map(inv, dx)
     Grid(
