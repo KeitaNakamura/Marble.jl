@@ -47,7 +47,7 @@ Grid(args...; kwargs...) = Grid{Float64}(args...; kwargs...)
 
 @inline function Base.getindex(grid::Grid{<: Any, dim}, i::Vararg{Int, dim}) where {dim}
     @boundscheck checkbounds(grid, i...)
-    @inbounds Vec(map(getindex, grid.axes, i))
+    @inbounds Vec(map(getindex, gridaxes(grid), i))
 end
 
 """
