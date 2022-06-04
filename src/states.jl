@@ -13,17 +13,17 @@ end
 default_gridstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
 default_gridstate_type(::Val{dim}, ::Val{T}) where {dim, T} = DefaultGridState{dim, T, dim+1, (dim+1)*(dim+1)}
 
-function generate_gridstate(Node::Type, grid::Grid)
-    SpArray(StructVector{Node}(undef, 0), SpPattern(size(grid)), true, Ref(NaN))
+function generate_gridstate(GridState::Type, grid::Grid)
+    SpArray(StructVector{GridState}(undef, 0), SpPattern(size(grid)), true, Ref(NaN))
 end
 
 function generate_gridstate(interp::Interpolation, grid::Grid{T, dim}) where {T, dim}
-    Node = default_gridstate_type(interp, Val(dim), Val(T))
-    generate_gridstate(Node, grid)
+    GridState = default_gridstate_type(interp, Val(dim), Val(T))
+    generate_gridstate(GridState, grid)
 end
 function generate_gridstate(grid::Grid{T, dim}) where {T, dim}
-    Node = default_gridstate_type(Val(dim), Val(T))
-    generate_gridstate(Node, grid)
+    GridState = default_gridstate_type(Val(dim), Val(T))
+    generate_gridstate(GridState, grid)
 end
 
 ################
@@ -91,12 +91,12 @@ function generate_pointstate(indomain, PointState::Type, grid::Grid{T, dim}; n::
 end
 
 function generate_pointstate(indomain, interp::Interpolation, grid::Grid{T, dim}; kwargs...) where {dim, T}
-    Point = default_pointstate_type(interp, Val(dim), Val(T))
-    generate_pointstate(indomain, Point, grid; kwargs...)
+    PointState = default_pointstate_type(interp, Val(dim), Val(T))
+    generate_pointstate(indomain, PointState, grid; kwargs...)
 end
 function generate_pointstate(indomain, grid::Grid{T, dim}; kwargs...) where {dim, T}
-    Point = default_pointstate_type(Val(dim), Val(T))
-    generate_pointstate(indomain, Point, grid; kwargs...)
+    PointState = default_pointstate_type(Val(dim), Val(T))
+    generate_pointstate(indomain, PointState, grid; kwargs...)
 end
 
 function points_outside_domain(xₚ::AbstractVector, grid::Grid)
