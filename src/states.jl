@@ -50,23 +50,24 @@ default_pointstate_type(::Interpolation, ::Val{dim}, ::Val{T}) where {dim, T} = 
 default_pointstate_type(::LinearWLS, ::Val{dim}, ::Val{T}) where {dim, T} = DefaultPointState{dim, T, dim+1, dim*(dim+1)}
 default_pointstate_type(::BilinearWLS, ::Val{2}, ::Val{T}) where {T} = DefaultPointState{2, T, 4, 8}
 
-function generate_pointstate(indomain, Point::Type, grid::Grid{T, dim}; n::Int = 2) where {dim, T}
+function generate_pointstate(indomain, PointState::Type, grid::Grid{T, dim}; n::Int = 2) where {dim, T}
+    axes = gridaxes(grid)
+    dims = size(grid)
     h = gridsteps(grid) ./ n # length per particle
-    allpoints = Grid(@. LinRange(
-        first($gridaxes(grid)) + h/2,
-        last($gridaxes(grid))  - h/2,
-        n * ($size(grid) - 1)
-    ))
+    allpoints = Grid(@. LinRange(first(axes)+h/2, last(axes)-h/2, n*(dims-1)))
 
-    npoints = count(x -> indomain(x...), allpoints)
-    pointstate = StructVector{Point}(undef, npoints)
+    # find points `indomain`
+    mask = broadcast(x -> indomain(x...), allpoints)
+    npts = count(mask)
+
+    pointstate = StructVector{PointState}(undef, npts)
     fillzero!(pointstate)
 
     if :x in propertynames(pointstate)
         cnt = 0
-        for x in allpoints
-            if indomain(x...)
-                @inbounds pointstate.x[cnt+=1] = x
+        @inbounds for (i, x) in enumerate(allpoints)
+            if mask[i]
+                pointstate.x[cnt+=1] = x
             end
         end
     end
@@ -82,7 +83,7 @@ function generate_pointstate(indomain, Point::Type, grid::Grid{T, dim}; n::Int =
         pointstate.r .= Vec(h) / 2
     end
     if :index in propertynames(pointstate)
-        pointstate.index .= 1:npoints
+        pointstate.index .= 1:npts
     end
 
     reorder_pointstate!(pointstate, pointsperblock(grid, pointstate.x))
